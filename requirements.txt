@@ -1,0 +1,8 @@
+zarr
+configparser
+numpy
+matplotlib
+mat73
+h5py
+tifffile
+tqdm

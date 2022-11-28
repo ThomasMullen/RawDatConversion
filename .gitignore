@@ -1,0 +1,6 @@
+**/*.mat
+**/*.dat
+*.html
+*.vscode
+*.pytest_cache
+__pycache__
