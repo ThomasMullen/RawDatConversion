@@ -53,7 +53,7 @@ def convert_dat_to_arr(dat_dir:str, zarr_filepath:str, flyback:int=2, dark_plane
                              int(daq.pixelsPerLine-flyback),
                              dat_loader.x_crop,
                              dat_loader.y_crop),
-                      chunks=(10, None),
+                      chunks=(1, None),
                       compressor=compressor,
                       dtype=np.uint16,)
     # create a dark vol is background subtraction applied
@@ -61,8 +61,6 @@ def convert_dat_to_arr(dat_dir:str, zarr_filepath:str, flyback:int=2, dark_plane
         dark_vol = np.tile(dark_plane, (int(daq.pixelsPerLine-flyback),1,1)).astype(z_arr.dtype)
     # interate through each camera volume and fill with sliced dat vol
     for i in trange(int(daq.numberOfScans)):
-        if i > 20:
-            break        
         volume = load_dats_for_vol(dat_loader,
                                      dat_dir, 
                                      file_names, 
@@ -76,7 +74,6 @@ def convert_dat_to_arr(dat_dir:str, zarr_filepath:str, flyback:int=2, dark_plane
             volume-=dark_vol
             
         z_arr.oindex[i] = volume
-        # z_arr.set_basic_selection((i,slice(None)), volume)
 
     return z_arr
     
@@ -84,17 +81,19 @@ def convert_dat_to_arr(dat_dir:str, zarr_filepath:str, flyback:int=2, dark_plane
 def main():
     # dark volume to subtract
     # dark_dat_dir=Path("/Volumes/TomMullen/10dpf20221119Fish01/test3/dark_offset_run1_HR")
-    export_path=Path(r"H:\10dpf20221119Fish01\test3\dark_offset_run1_HR_dark_plane")
+    export_path=Path(r"/Volumes/TomMullen/10dpf20221119Fish01/test3/dark_offset_run1_HR_dark_plane")
     # make_dark_plane(dat_dir=dark_dat_dir, 
     #                 export_path=export_path)
     
-    dat_dir=Path(r"H:\10dpf20221119Fish01\test3\fullrun_run1")
-    compressor = Blosc(cname='zstd', clevel=3, shuffle=Blosc.BITSHUFFLE)
+    dat_dir=Path(r"/Volumes/TomMullen/10dpf20221119Fish01/test3/10dpf20221119Fish01/test3/fullrun_run1")
+    compressor = Blosc(cname='zstd', clevel=7, shuffle=Blosc.BITSHUFFLE)
     output_z_arr = convert_dat_to_arr(dat_dir=f"{dat_dir}",
                                       flyback=2, 
                                       dark_plane_path=Path(f"{export_path}.npy"), 
-                                      zarr_filepath=r"E:\2022\SCAPETestFullRun.zarr", 
-                                      compressor=None)
+                                      zarr_filepath=r"/Volumes/TomMullen/10dpf20221119Fish01/test3/fullrun.zarr", 
+                                      compressor=compressor)
+
+
 
 if __name__ == '__main__':
     
@@ -106,7 +105,7 @@ if __name__ == '__main__':
     profiler.disable()
     stats = pstats.Stats(profiler).sort_stats('cumtime')
     stats.print_stats()
-    stats.dump_stats(r'C:\Users\orger\VScodeProjects\RawDatConversion')
+    stats.dump_stats(r'./tests/profile_stats.txt')
     
     
     
