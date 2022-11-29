@@ -19,7 +19,7 @@ def make_dark_plane(dat_dir:str, export_path:str=None)->None:
     return
 
 # function build stack
-def convert_dat_to_arr(dat_dir:str, flyback:int=2, dark_plane_path:str=None, compressor=None)->np.ndarray:
+def convert_dat_to_arr(dat_dir:str, zarr_filepath:str, flyback:int=2, dark_plane_path:str=None, compressor=None)->np.ndarray:
     # parse filepaths
     dat_dir=Path(dat_dir)
     info_path = Path(f"{dat_dir.parent}/{dat_dir.stem}_info.mat")
@@ -47,17 +47,22 @@ def convert_dat_to_arr(dat_dir:str, flyback:int=2, dark_plane_path:str=None, com
     # prepare slices and dat vols for each camera vol
     dat_vol_arrays, dat_slice_array = map_dats_to_volume(daq, dat_loader.n_planes)
     # instantiate experiment array
-    z_arr = zarr.zeros((int(daq.numberOfScans), 
-                        int(daq.pixelsPerLine-flyback), 
-                        dat_loader.x_crop, 
-                        dat_loader.y_crop), 
-                       dtype=np.uint16,
-                       compressor=compressor)
+    z_arr = zarr.open(f'{zarr_filepath}', 
+                      mode='w', 
+                      shape=(int(daq.numberOfScans),
+                             int(daq.pixelsPerLine-flyback),
+                             dat_loader.x_crop,
+                             dat_loader.y_crop),
+                      chunks=(10, None),
+                      compressor=compressor,
+                      dtype=np.uint16,)
     # create a dark vol is background subtraction applied
     if dark_plane is not None:
         dark_vol = np.tile(dark_plane, (int(daq.pixelsPerLine-flyback),1,1)).astype(z_arr.dtype)
     # interate through each camera volume and fill with sliced dat vol
     for i in trange(int(daq.numberOfScans)):
+        if i > 20:
+            break        
         volume = load_dats_for_vol(dat_loader,
                                      dat_dir, 
                                      file_names, 
@@ -70,22 +75,38 @@ def convert_dat_to_arr(dat_dir:str, flyback:int=2, dark_plane_path:str=None, com
             volume+=110
             volume-=dark_vol
             
-        z_arr[i] = volume
+        z_arr.oindex[i] = volume
+        # z_arr.set_basic_selection((i,slice(None)), volume)
+
     return z_arr
     
 
-if __name__ == '__main__':
-    
+def main():
     # dark volume to subtract
     # dark_dat_dir=Path("/Volumes/TomMullen/10dpf20221119Fish01/test3/dark_offset_run1_HR")
-    export_path=Path("/Volumes/TomMullen/10dpf20221119Fish01/test3/dark_offset_run1_HR_dark_plane")
+    export_path=Path(r"H:\10dpf20221119Fish01\test3\dark_offset_run1_HR_dark_plane")
     # make_dark_plane(dat_dir=dark_dat_dir, 
     #                 export_path=export_path)
     
-    dat_dir=Path("/Volumes/TomMullen/10dpf20221119Fish01/test3/fullrun_run1")
+    dat_dir=Path(r"H:\10dpf20221119Fish01\test3\fullrun_run1")
     compressor = Blosc(cname='zstd', clevel=3, shuffle=Blosc.BITSHUFFLE)
     output_z_arr = convert_dat_to_arr(dat_dir=f"{dat_dir}",
-                               flyback=2, dark_plane_path=Path(f"{export_path}.npy"), compressor=None)
+                                      flyback=2, 
+                                      dark_plane_path=Path(f"{export_path}.npy"), 
+                                      zarr_filepath=r"E:\2022\SCAPETestFullRun.zarr", 
+                                      compressor=None)
+
+if __name__ == '__main__':
     
-    zarr.save(f"/Volumes/TomMullen/10dpf20221119Fish01/test3/fullrun_run1.zarr", output_z_arr)
+
+    import cProfile, pstats
+    profiler = cProfile.Profile()
+    profiler.enable()
+    main()
+    profiler.disable()
+    stats = pstats.Stats(profiler).sort_stats('cumtime')
+    stats.print_stats()
+    stats.dump_stats(r'C:\Users\orger\VScodeProjects\RawDatConversion')
+    
+    
     
