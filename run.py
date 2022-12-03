@@ -8,24 +8,13 @@ from numcodecs import Blosc
 import mat73
 from tqdm import trange
 import cProfile, pstats
+import io
 
 from data_conversion.dat_conversion import make_dark_plane, convert_dat_to_arr
 from data_conversion.dat_file_functs import Struct, LoadConfig, calc_total_planes, create_directory
 from data_conversion.data_stream_io import map_dats_to_volume, load_dats_for_vol
 from tracking.merge_stim import merge_tracking
 
-parser = argparse.ArgumentParser(description='Define the parameters used for converting dat files')
-parser.add_argument('-pD', '--PathData', help="path to imaging directories data", default='.', type=str)
-parser.add_argument('-pT', '--PathTracking', help="path to tracking directories data", default='.', type=str)
-parser.add_argument('-pE', '--PathExport', help="path to export aggregated data", default='.', type=str)
-parser.add_argument('-c', '--cLevel', help="Level of compression of zarr file. Uses zstd Blosc.BITSHUFFLE compression. Default n = 5.",
-                    default=5, type=int)
-parser.add_argument('-f', '--flyback', help="flyback frames used. Default n = 2.",
-                    default=2, type=int)
-parser.add_argument('-pre', '--preStim', help="Seconds acquired before stimulus.",
-                    nargs='+', type=int)
-parser.add_argument('-pos', '--postStim', help="Seconds acquired after stimulus.",
-                    nargs='+', type=int)
 
 def main(args):
     # Argument Checks
@@ -157,21 +146,20 @@ def main(args):
 
 
 if __name__ == "__main__":
-    sys.argv = ['run.py', 
-                '--PathData', '/Volumes/TomMullen/20221124/f02_6dpf_huc_h2b', 
-                '--PathTracking', '/Volumes/TomMullen/20221124/f02_6dpf_huc_h2b/tracking/f02_6dpf_huc_h2b', 
-                '--PathExport', '/Volumes/TomMullen/20221124/f02_6dpf_huc_h2b/preprocess',
-                '--postStim', '15', '15', '15', '15',
-                '--preStim', '10', '10', '10', '10'
-                ]
-    print(sys.argv)
-    args = parser.parse_args()
-    print(args)
+    parser = argparse.ArgumentParser(description='Define the parameters used for converting dat files')
+    parser.add_argument('-pD', '--PathData', help="path to imaging directories data", default='.', type=str)
+    parser.add_argument('-pT', '--PathTracking', help="path to tracking directories data", default='.', type=str)
+    parser.add_argument('-pE', '--PathExport', help="path to export aggregated data", default='.', type=str)
+    parser.add_argument('-c', '--cLevel', help="Level of compression of zarr file. Uses zstd Blosc.BITSHUFFLE compression. Default n = 5.",
+                        default=5, type=int)
+    parser.add_argument('-f', '--flyback', help="flyback frames used. Default n = 2.",
+                        default=2, type=int)
+    parser.add_argument('-pre', '--preStim', help="Seconds acquired before stimulus.",
+                        nargs='+', type=int)
+    parser.add_argument('-pos', '--postStim', help="Seconds acquired after stimulus.",
+                        nargs='+', type=int)
     
-    profiler = cProfile.Profile()
-    profiler.enable()
+    args = parser.parse_args()
+    logging.warning(args)
+    
     main(args)
-    profiler.disable()
-    stats = pstats.Stats(profiler).sort_stats('cumtime')
-    stats.print_stats()
-    stats.dump_stats(r'/Volumes/TomMullen/20221124/f02_6dpf_huc_h2b/preprocess/profile_stats.txt')
