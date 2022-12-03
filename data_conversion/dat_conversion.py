@@ -12,29 +12,30 @@ from tqdm import trange
 # function make dark vol
 def make_dark_plane(dat_dir:str, export_path:str=None)->np.ndarray:
     if export_path is None:
-        export_path=Path(f"{dat_dir.parent}/{dat_dir.stem}_dark_plane")
+        export_path=Path(f"{dat_dir.parent}",f"{dat_dir.stem}_dark_plane")
     logging.info("Make dark plane")
     # make dark volume fielpath
-    zarr_filepath = Path(f"{export_path.parent}/dark_vol.zarr")
+    zarr_filepath = Path(f"{export_path.parent}",f"dark_vol.zarr")
     # make dark volume from multiple dark plane recordings
-    z_arr = convert_dat_to_arr(dat_dir, zarr_filepath=zarr_filepath)
+    compressor = Blosc(cname='zstd', clevel=9, shuffle=Blosc.BITSHUFFLE)
+    z_arr = convert_dat_to_arr(dat_dir, zarr_filepath=zarr_filepath, compressor=compressor)
     # make dark plane
     dark_plane = np.mean(z_arr, axis=(0,1))
     # save dark plane
     np.save(export_path, dark_plane)
-    # compress converted zarr vol and remove raw
-    proc = subprocess.run(['zip', '-r', f'{zarr_filepath.parent}/{zarr_filepath.stem}.zip',
-                        f'{zarr_filepath}'])
-    proc = subprocess.run(['rm', '-r', f'{zarr_filepath}'])
-    logging.warning("Removed .zarr dark vol")
+    # # compress converted zarr vol and remove raw
+    # proc = subprocess.run(['zip', '-r', f'{zarr_filepath.parent}/{zarr_filepath.stem}.zip',
+    #                     f'{zarr_filepath}'])
+    # proc = subprocess.run(['rm', '-r', f'{zarr_filepath}'])
+    # logging.warning("Removed .zarr dark vol")
     return dark_plane
 
 # function build stack
 def convert_dat_to_arr(dat_dir:str, zarr_filepath:str, flyback:int=2, dark_plane_path:str=None, compressor=None)->np.ndarray:
     # parse filepaths
     dat_dir=Path(dat_dir)
-    info_path = Path(f"{dat_dir.parent}/{dat_dir.stem}_info.mat")
-    config_path = Path(f"{dat_dir}/acquisitionmetadata.ini")
+    info_path = Path(f"{dat_dir.parent}",f"{dat_dir.stem}_info.mat")
+    config_path = Path(f"{dat_dir}",f"acquisitionmetadata.ini")
     
     # check if dark plane can be loaded
     if dark_plane_path is not None:

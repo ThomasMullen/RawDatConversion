@@ -44,9 +44,9 @@ def find_onset_offset(binary_serie):
 def merge_tracking(tracking_dir, exp_dir):
     # create file path
     tracking_dir = Path(tracking_dir)
-    cam_path = Path(f"{tracking_dir}/{tracking_dir.stem}scape sync reader.txt")
-    tail_path = Path(f"{tracking_dir}/{tracking_dir.stem}mp tail tracking.txt")
-    stim_path = Path(f"{tracking_dir}/{tracking_dir.stem}stim control.txt")
+    cam_path = Path(f"{tracking_dir}",f"{tracking_dir.stem}scape sync reader.txt")
+    tail_path = Path(f"{tracking_dir}",f"{tracking_dir.stem}mp tail tracking.txt")
+    stim_path = Path(f"{tracking_dir}",f"{tracking_dir.stem}stim control.txt")
     
     # make hdf5 file
     store = pd.HDFStore(f'{exp_dir}/store.h5')

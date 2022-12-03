@@ -7,6 +7,7 @@ import zarr
 from numcodecs import Blosc
 import mat73
 from tqdm import trange
+import cProfile, pstats
 
 from data_conversion.dat_conversion import make_dark_plane, convert_dat_to_arr
 from data_conversion.dat_file_functs import Struct, LoadConfig, calc_total_planes, create_directory
@@ -72,9 +73,9 @@ def main(args):
                            "HR" not in str(name) and 
                            "dark" not in str(name) and 
                            name.is_dir())))[-1]
-    info_path = Path(f"{dat_dir.parent}/{dat_dir.stem}_info.mat")
+    info_path = Path(f"{dat_dir.parent}",f"{dat_dir.stem}_info.mat")
     assert info_path.exists(), f"invalid info path: {info_path}"
-    config_path = Path(f"{dat_dir}/acquisitionmetadata.ini")
+    config_path = Path(f"{dat_dir}",f"acquisitionmetadata.ini")
     assert config_path.exists(), f"invalid config path: {config_path}"
 
     # config Dat files
@@ -110,7 +111,7 @@ def main(args):
             
         # instantiate experiment array
         compressor = Blosc(cname='zstd', clevel=args.cLevel, shuffle=Blosc.BITSHUFFLE)
-        zarr_filepath = Path(f"{exp_dir}/{root_dir.stem}_{trial_ix:02}.zarr")
+        zarr_filepath = Path(f"{exp_dir}",f"{root_dir.stem}_{trial_ix:02}.zarr")
         z_arr = zarr.open(f'{zarr_filepath}', 
                         mode='w', 
                         shape=(timepoints,
@@ -159,11 +160,18 @@ if __name__ == "__main__":
     sys.argv = ['run.py', 
                 '--PathData', '/Volumes/TomMullen/20221124/f02_6dpf_huc_h2b', 
                 '--PathTracking', '/Volumes/TomMullen/20221124/f02_6dpf_huc_h2b/tracking/f02_6dpf_huc_h2b', 
-                '--PathExport', '/Volumes/TomMullen/20221124/f02_6dpf_huc_h2b/preocessed',
+                '--PathExport', '/Volumes/TomMullen/20221124/f02_6dpf_huc_h2b/preprocess',
                 '--postStim', '15', '15', '15', '15',
                 '--preStim', '10', '10', '10', '10'
                 ]
     print(sys.argv)
     args = parser.parse_args()
     print(args)
+    
+    profiler = cProfile.Profile()
+    profiler.enable()
     main(args)
+    profiler.disable()
+    stats = pstats.Stats(profiler).sort_stats('cumtime')
+    stats.print_stats()
+    stats.dump_stats(r'/Volumes/TomMullen/20221124/f02_6dpf_huc_h2b/preprocess/profile_stats.txt')

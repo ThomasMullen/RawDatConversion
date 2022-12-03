@@ -38,7 +38,7 @@ def load_dats_for_vol(dat_loader:DatLoader, dat_dir:str, dat_filenames, dat_ixs,
     Returns:
         np.ndarray: volume of array
     """
-    return np.concatenate([dat_loader.load_dat_file(Path(f"{dat_dir}/{dat_filenames[datix]}"))[..., plane_slices]
+    return np.concatenate([dat_loader.load_dat_file(Path(f"{dat_dir}",f"{dat_filenames[datix]}"))[..., plane_slices]
                            for datix, plane_slices in zip(dat_ixs, dat_slices)], axis=2)
     
     
