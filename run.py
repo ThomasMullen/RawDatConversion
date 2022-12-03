@@ -10,6 +10,7 @@ from tqdm import trange
 from data_conversion.dat_conversion import make_dark_plane, convert_dat_to_arr
 from data_conversion.dat_file_functs import Struct, LoadConfig, calc_total_planes, create_directory
 from data_conversion.data_stream_io import map_dats_to_volume, load_dats_for_vol
+from tracking.merge_stim import merge_tracking
 
 
 
@@ -17,6 +18,7 @@ def main(args):
     # 1: define paths
     # ---------------------------------
     root_dir = Path(args.PathData)
+    tracking_dir = Path(args.PathTracking)
     exp_dir = Path(args.PathExp)
     
     create_directory(parent_path=exp_dir.parent, dir_name=f"{exp_dir.stem}")
@@ -36,9 +38,10 @@ def main(args):
     #              "dark" not in str(name)), 
     #             reverse=True))
 
-    # 3: Split on UV behaviour TODO
+    # 3: Split on UV behaviour
     # ---------------------------------
     # infer the behaviour mapping and UV stimulation
+    tail_df, stim_onset, stim_offset = merge_tracking(tracking_dir, exp_dir)
     
     # Export each section with volume:frameID
     
@@ -106,6 +109,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Define the parameters used for converting dat files')
     parser.add_argument('-pD', '--PathData', help="path to imaging directories data", default='.', type=str)
+    parser.add_argument('-pT', '--PathTracking', help="path to tracking directories data", default='.', type=str)
     parser.add_argument('-pE', '--PathExport', help="path to export aggregated data", default='.', type=str)
     parser.add_argument('-c', '--cLevel', help="Level of compression of zarr file." / 
                         "Uses zstd Blosc.BITSHUFFLE compression. Default n = 5.",
