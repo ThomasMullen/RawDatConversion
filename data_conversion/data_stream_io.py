@@ -1,7 +1,7 @@
 from pathlib import Path
 import numpy as np
 
-from dat_file_functs import Struct, find_dat_slice_ix, DatLoader
+from data_conversion.dat_file_functs import Struct, find_dat_slice_ix, DatLoader
 
 
 def map_dats_to_volume(daq: Struct, planes_per_dat:int):

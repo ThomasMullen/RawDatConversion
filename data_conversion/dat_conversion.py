@@ -5,8 +5,8 @@ import zarr
 from numcodecs import Blosc
 import mat73
 import logging
-from dat_file_functs import Struct, LoadConfig, calc_total_planes
-from data_stream_io import map_dats_to_volume, load_dats_for_vol
+from data_conversion.dat_file_functs import Struct, LoadConfig, calc_total_planes
+from data_conversion.data_stream_io import map_dats_to_volume, load_dats_for_vol
 from tqdm import trange
 
 # function make dark vol

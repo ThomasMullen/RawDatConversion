@@ -1,9 +1,11 @@
-zarr
 configparser
-numpy
-matplotlib
-mat73
 h5py
+mat73
+matplotlib
+numpy
+pandas
+scipy
+tables
 tifffile
 tqdm
-scipy
+zarr
