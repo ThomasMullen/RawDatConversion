@@ -15,6 +15,11 @@ from tracking.merge_stim import merge_tracking
 
 
 def main(args):
+    # Argument Checks
+    assert len(args.preStim)==len(args.posStim), f"mismatch with {len(args.preStim)} pre-stimulus and {len(args.posStim)} post-stimulus periods"
+    pre_ts = args.preStim
+    post_ts = args.posStim
+    
     # 1: define paths
     # ---------------------------------
     root_dir = Path(args.PathData)
@@ -42,6 +47,7 @@ def main(args):
     # ---------------------------------
     # infer the behaviour mapping and UV stimulation
     tail_df, stim_onset, stim_offset = merge_tracking(tracking_dir, exp_dir)
+    assert stim_offset.size == post_ts, "Number of detected stimuli need to match the number of periods"
     
     # Export each section with volume:frameID
     
@@ -58,7 +64,7 @@ def main(args):
     config_path = Path(f"{dat_dir}/acquisitionmetadata.ini")
     assert config_path.exists(), f"invalid config path: {config_path}"
 
-    
+    # config Dat files
     # load daq info
     daq = Struct(mat73.loadmat(info_path)).info.daq
     # load config file
@@ -70,40 +76,68 @@ def main(args):
     file_names = dat_loader.sort_spool_filenames(total_planes)
     # prepare slices and dat vols for each camera vol
     dat_vol_arrays, dat_slice_array = map_dats_to_volume(daq, dat_loader.n_planes)
-    # instantiate experiment array
-    compressor = Blosc(cname='zstd', clevel=args.cLevel, shuffle=Blosc.BITSHUFFLE)
-    zarr_filepath = Path(f"{exp_dir}/{root_dir.stem}.zarr")
-    z_arr = zarr.open(f'{zarr_filepath}', 
-                      mode='w', 
-                      shape=(int(daq.numberOfScans),
-                             int(daq.pixelsPerLine-flyback),
-                             dat_loader.x_crop,
-                             dat_loader.y_crop),
-                      chunks=(1, None),
-                      compressor=compressor,
-                      dtype=np.uint16,)
-    # add attributes i.e. relative frame ids and vol ids
-    # ...
     
-    # create a dark vol is background subtraction applied
-    dark_vol = np.tile(dark_plane, (int(daq.pixelsPerLine-flyback),1,1)).astype(z_arr.dtype)
-    # interate through each camera volume and fill with sliced dat vol
-    for i in trange(int(daq.numberOfScans)):
-        volume = load_dats_for_vol(dat_loader,
-                                     dat_dir, 
-                                     file_names, 
-                                     dat_vol_arrays[i], 
-                                     dat_slice_array[i])[...,:-flyback]
-        # reorder indices - t, z, y, x
-        volume = volume.transpose(2,0,1)
-        # subtract dark vol
-        if dark_plane is not None:
+    # calculate volume rate
+    vol_rate = daq.pixelrate / daq.pixelsPerLine
+    
+    # iterate through each trial
+    for trial_ix, (stim_on, stim_off, t_init, t_fin) in enumerate(zip(stim_onset.itertuples(), stim_offset.itertuples(), pre_ts, post_ts)):
+        logging.warning(f"Trial {trial_ix} Started")
+        # calculate initial vol_ix
+        pre_v = np.ceil(vol_rate*t_init).astype(int)
+        post_v = np.ceil(vol_rate*t_fin).astype(int)
+    
+        # slice on the period and stimuli activity
+        trial_dat_slice_array = np.concatenate([dat_slice_array[stim_on.vol_id-pre_v:stim_on.vol_id], 
+                                                dat_slice_array[stim_off.vol_id+1:stim_off.vol_id+post_v]])
+        trial_dat_vol_arrays = np.concatenate([dat_vol_arrays[stim_on.vol_id-pre_v:stim_on.vol_id], 
+                                                dat_vol_arrays[stim_off.vol_id+1:stim_off.vol_id+post_v]])
+    
+        # instantiate experiment array
+        compressor = Blosc(cname='zstd', clevel=args.cLevel, shuffle=Blosc.BITSHUFFLE)
+        zarr_filepath = Path(f"{exp_dir}/{root_dir.stem}_{trial_ix:02}.zarr")
+        z_arr = zarr.open(f'{zarr_filepath}', 
+                        mode='w', 
+                        shape=(int(daq.numberOfScans),
+                                int(daq.pixelsPerLine-flyback),
+                                dat_loader.x_crop,
+                                dat_loader.y_crop),
+                        chunks=(1, None),
+                        compressor=compressor,
+                        dtype=np.uint16,)
+        
+        # add attributes i.e. relative frame ids and vol ids
+        fid_vals = tail_df.loc[tail_df.vol_id == pre_v, 'FrameID'].values
+        z_arr.attrs['FID_init'] = (fid_vals[0], fid_vals[-1])
+        z_arr.attrs['VID_init'] = pre_v
+        
+        fid_vals = tail_df.loc[tail_df.vol_id == post_v, 'FrameID'].values
+        z_arr.attrs['FID_fin'] = (fid_vals[0], fid_vals[-1])
+        z_arr.attrs['VID_fin'] = post_v
+        
+        z_arr.attrs['FID_on'] = tail_df.loc[tail_df.vol_id == stim_on.vol_id, 'FrameID'].values[0]
+        z_arr.attrs['VID_on'] = stim_on.vol_id
+        
+        z_arr.attrs['FID_off'] = tail_df.loc[tail_df.vol_id == stim_off.vol_id, 'FrameID'].values[-1]
+        z_arr.attrs['VID_off'] = stim_off.vol_id
+        
+        # create a dark vol is background subtraction applied
+        dark_vol = np.tile(dark_plane, (int(daq.pixelsPerLine-flyback),1,1)).astype(z_arr.dtype)
+        # interate through each camera volume and fill with sliced dat vol
+        for i in trange(int(daq.numberOfScans)):
+            volume = load_dats_for_vol(dat_loader,
+                                        dat_dir, 
+                                        file_names, 
+                                        trial_dat_slice_array[i], 
+                                        trial_dat_vol_arrays[i])[...,:-flyback]
+            # reorder indices - t, z, y, x
+            volume = volume.transpose(2,0,1)
+            # subtract dark vol
             volume+=110
             volume-=dark_vol
-            
-        z_arr.oindex[i] = volume
-    
-    vol_rate = daq.pixelrate / daq.pixelsPerLine
+                
+            z_arr.oindex[i] = volume
+        logging.warning("Trial Exported")
 
 
 if __name__ == "__main__":
@@ -116,5 +150,9 @@ if __name__ == "__main__":
                         default=5, type=int)
     parser.add_argument('-f', '--flyback', help="flyback frames used. Default n = 2.",
                         default=2, type=int)
+    parser.add_argument('-pre', '--preStim', help="Seconds acquired before stimulus.",
+                        nargs='+', type=int)
+    parser.add_argument('-pos', '--posStim', help="Seconds acquired after stimulus.",
+                        nargs='+', type=int)
     args = parser.parse_args()
     main(args)
