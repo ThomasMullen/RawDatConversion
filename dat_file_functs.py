@@ -1,7 +1,22 @@
 import configparser
 from dataclasses import dataclass, field
 import numpy as np
+from pathlib import Path
+import logging
 
+
+def create_directory(parent_path, dir_name=''):
+    parent_path = Path(f"{parent_path}")
+    # make export directory
+    dir_path = parent_path.joinpath(dir_name)
+    # if already exists return directory path file
+    if dir_path.exists():
+        logging.warning(f"Directory '{dir_path}' already exists.")
+        return dir_path
+    # otherwise make directory
+    dir_path.mkdir()
+    logging.warning(f"Directory '{dir_path}' created.")
+    return dir_path
 
 class Struct(object):
     """

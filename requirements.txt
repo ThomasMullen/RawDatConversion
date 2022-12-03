@@ -6,3 +6,4 @@ mat73
 h5py
 tifffile
 tqdm
+scipy

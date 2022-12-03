@@ -1,3 +1,4 @@
+import subprocess
 from pathlib import Path
 import numpy as np
 import zarr
@@ -9,14 +10,23 @@ from data_stream_io import map_dats_to_volume, load_dats_for_vol
 from tqdm import trange
 
 # function make dark vol
-def make_dark_plane(dat_dir:str, export_path:str=None)->None:
+def make_dark_plane(dat_dir:str, export_path:str=None)->np.ndarray:
     if export_path is None:
         export_path=Path(f"{dat_dir.parent}/{dat_dir.stem}_dark_plane")
     logging.info("Make dark plane")
-    z_arr = convert_dat_to_arr(dat_dir)
+    # make dark volume fielpath
+    zarr_filepath = Path(f"{export_path.parent}/dark_vol.zarr")
+    # make dark volume from multiple dark plane recordings
+    z_arr = convert_dat_to_arr(dat_dir, zarr_filepath=zarr_filepath)
+    # make dark plane
     dark_plane = np.mean(z_arr, axis=(0,1))
+    # save dark plane
     np.save(export_path, dark_plane)
-    return
+    # compress converted zarr vol and remove raw
+    proc = subprocess.run(['zip', '-r', f'{zarr_filepath.parent}/{zarr_filepath.stem}.zip',
+                        f'{zarr_filepath}'])
+    proc = subprocess.run(['rm', '-r', f'{zarr_filepath}'])
+    return dark_plane
 
 # function build stack
 def convert_dat_to_arr(dat_dir:str, zarr_filepath:str, flyback:int=2, dark_plane_path:str=None, compressor=None)->np.ndarray:
