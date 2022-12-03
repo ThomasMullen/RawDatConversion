@@ -26,6 +26,7 @@ def make_dark_plane(dat_dir:str, export_path:str=None)->np.ndarray:
     proc = subprocess.run(['zip', '-r', f'{zarr_filepath.parent}/{zarr_filepath.stem}.zip',
                         f'{zarr_filepath}'])
     proc = subprocess.run(['rm', '-r', f'{zarr_filepath}'])
+    logging.warning("Removed .zarr dark vol")
     return dark_plane
 
 # function build stack

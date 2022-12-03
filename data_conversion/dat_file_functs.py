@@ -359,4 +359,4 @@ def find_dat_slice_ix(dat_len_arr, plane_p_dat):
     end_ix = np.array(dat_len_arr)
     # first dat file end at the maximum
     end_ix[0] = plane_p_dat
-    return np.array([slice(start, end) for start, end in zip(start_ix, end_ix)])
+    return np.array([slice(start, end) for start, end in zip(start_ix, end_ix)], dtype='object')

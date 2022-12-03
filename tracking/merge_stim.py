@@ -25,16 +25,16 @@ def find_onset_offset(binary_serie):
     """
     # PAD WITH ZEROS:
     zer = pd.Series([0], index=[binary_serie.index[-1]])
-    binary_serie = binary_serie.append(zer)
+    binary_serie = pd.concat([binary_serie,zer])
     zer = pd.Series([0], index=[binary_serie.index[0]])
-    binary_serie = zer.append(binary_serie)
+    binary_serie = pd.concat([zer,binary_serie])
     cd_diff = binary_serie.diff().abs()
     cd_diff = cd_diff.iloc[1:-1]  # remove start and end values
     index_ = cd_diff[cd_diff == 1].index
     # Not sure if it shoud be added to the beginning or end
     if len(index_) % 2 == 1:
         last_index = binary_serie.index[-1]
-        index_ = index_.append(pd.Index([last_index]))
+        index_ = pd.concat([index_, pd.Index([last_index])])
     index_range = index_.to_numpy().reshape(-1, 2)
     onset = index_range[:, 0]
     offset = index_range[:, 1]
@@ -44,9 +44,9 @@ def find_onset_offset(binary_serie):
 def merge_tracking(tracking_dir, exp_dir):
     # create file path
     tracking_dir = Path(tracking_dir)
-    cam_path = Path(f"{tracking_dir}/{tracking_dir}scape sync reader.txt")
-    tail_path = Path(f"{tracking_dir}/{tracking_dir}mp tail tracking.txt")
-    stim_path = Path(f"{tracking_dir}/{tracking_dir}stim control.txt")
+    cam_path = Path(f"{tracking_dir}/{tracking_dir.stem}scape sync reader.txt")
+    tail_path = Path(f"{tracking_dir}/{tracking_dir.stem}mp tail tracking.txt")
+    stim_path = Path(f"{tracking_dir}/{tracking_dir.stem}stim control.txt")
     
     # make hdf5 file
     store = pd.HDFStore(f'{exp_dir}/store.h5')
@@ -55,6 +55,8 @@ def merge_tracking(tracking_dir, exp_dir):
     cam_df = pd.read_csv(cam_path, delimiter=' ')
     tail_df = pd.read_csv(tail_path, delimiter=' ')
     tail_df=cam_df.merge(tail_df,how='right',on='FrameID').ffill()
+    # drop any nans
+    tail_df.dropna(axis=0, inplace=True)
     
     # mapstim and tail via AbsoluteTime
     

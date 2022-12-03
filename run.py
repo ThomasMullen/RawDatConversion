@@ -1,3 +1,4 @@
+import sys
 import logging
 import argparse
 from pathlib import Path
@@ -12,19 +13,30 @@ from data_conversion.dat_file_functs import Struct, LoadConfig, calc_total_plane
 from data_conversion.data_stream_io import map_dats_to_volume, load_dats_for_vol
 from tracking.merge_stim import merge_tracking
 
-
+parser = argparse.ArgumentParser(description='Define the parameters used for converting dat files')
+parser.add_argument('-pD', '--PathData', help="path to imaging directories data", default='.', type=str)
+parser.add_argument('-pT', '--PathTracking', help="path to tracking directories data", default='.', type=str)
+parser.add_argument('-pE', '--PathExport', help="path to export aggregated data", default='.', type=str)
+parser.add_argument('-c', '--cLevel', help="Level of compression of zarr file. Uses zstd Blosc.BITSHUFFLE compression. Default n = 5.",
+                    default=5, type=int)
+parser.add_argument('-f', '--flyback', help="flyback frames used. Default n = 2.",
+                    default=2, type=int)
+parser.add_argument('-pre', '--preStim', help="Seconds acquired before stimulus.",
+                    nargs='+', type=int)
+parser.add_argument('-pos', '--postStim', help="Seconds acquired after stimulus.",
+                    nargs='+', type=int)
 
 def main(args):
     # Argument Checks
-    assert len(args.preStim)==len(args.posStim), f"mismatch with {len(args.preStim)} pre-stimulus and {len(args.posStim)} post-stimulus periods"
+    assert len(args.preStim)==len(args.postStim), f"mismatch with {len(args.preStim)} pre-stimulus and {len(args.postStim)} post-stimulus periods"
     pre_ts = args.preStim
-    post_ts = args.posStim
+    post_ts = args.postStim
     
     # 1: define paths
     # ---------------------------------
     root_dir = Path(args.PathData)
     tracking_dir = Path(args.PathTracking)
-    exp_dir = Path(args.PathExp)
+    exp_dir = Path(args.PathExport)
     
     create_directory(parent_path=exp_dir.parent, dir_name=f"{exp_dir.stem}")
 
@@ -33,8 +45,8 @@ def main(args):
 
     # 2: Make dark volume
     # ---------------------------------
-    dark_vol_dir = list(sorted(name for name in root_dir.glob("**/*dark*") if name.is_dir()))[-1]
-    dark_vol_path = Path(f"{exp_dir}/dark_plane.npy")
+    dark_vol_dir = list(sorted(name for name in root_dir.glob("*dark*") if name.is_dir()))[-1]
+    dark_vol_path = Path(f"{exp_dir}","dark_plane.npy")
     dark_plane = make_dark_plane(dat_dir=dark_vol_dir, export_path=dark_vol_path)
     logging.info(f"Dark volume exported")
     # HR dir path
@@ -47,7 +59,7 @@ def main(args):
     # ---------------------------------
     # infer the behaviour mapping and UV stimulation
     tail_df, stim_onset, stim_offset = merge_tracking(tracking_dir, exp_dir)
-    assert stim_offset.size == post_ts, "Number of detected stimuli need to match the number of periods"
+    assert stim_offset.shape[0] == len(post_ts), "Number of detected stimuli need to match the number of periods"
     
     # Export each section with volume:frameID
     
@@ -56,9 +68,10 @@ def main(args):
     # ---------------------------------
     flyback = args.flyback
     
-    dat_dir = list(sorted((name for name in root_dir.glob("**/") if 
+    dat_dir = list(sorted((name for name in root_dir.glob(f"*{root_dir.stem}*") if 
                            "HR" not in str(name) and 
-                           "dark" not in str(name))))[-2]
+                           "dark" not in str(name) and 
+                           name.is_dir())))[-1]
     info_path = Path(f"{dat_dir.parent}/{dat_dir.stem}_info.mat")
     assert info_path.exists(), f"invalid info path: {info_path}"
     config_path = Path(f"{dat_dir}/acquisitionmetadata.ini")
@@ -92,13 +105,15 @@ def main(args):
                                                 dat_slice_array[stim_off.vol_id+1:stim_off.vol_id+post_v]])
         trial_dat_vol_arrays = np.concatenate([dat_vol_arrays[stim_on.vol_id-pre_v:stim_on.vol_id], 
                                                 dat_vol_arrays[stim_off.vol_id+1:stim_off.vol_id+post_v]])
-    
+        
+        timepoints = len(trial_dat_slice_array)
+            
         # instantiate experiment array
         compressor = Blosc(cname='zstd', clevel=args.cLevel, shuffle=Blosc.BITSHUFFLE)
         zarr_filepath = Path(f"{exp_dir}/{root_dir.stem}_{trial_ix:02}.zarr")
         z_arr = zarr.open(f'{zarr_filepath}', 
                         mode='w', 
-                        shape=(int(daq.numberOfScans),
+                        shape=(timepoints,
                                 int(daq.pixelsPerLine-flyback),
                                 dat_loader.x_crop,
                                 dat_loader.y_crop),
@@ -107,13 +122,13 @@ def main(args):
                         dtype=np.uint16,)
         
         # add attributes i.e. relative frame ids and vol ids
-        fid_vals = tail_df.loc[tail_df.vol_id == pre_v, 'FrameID'].values
+        fid_vals = tail_df.loc[tail_df.vol_id == stim_off.vol_id-pre_v, 'FrameID'].values
         z_arr.attrs['FID_init'] = (fid_vals[0], fid_vals[-1])
-        z_arr.attrs['VID_init'] = pre_v
+        z_arr.attrs['VID_init'] = stim_on.vol_id - pre_v
         
-        fid_vals = tail_df.loc[tail_df.vol_id == post_v, 'FrameID'].values
+        fid_vals = tail_df.loc[tail_df.vol_id == stim_on.vol_id+post_v, 'FrameID'].values
         z_arr.attrs['FID_fin'] = (fid_vals[0], fid_vals[-1])
-        z_arr.attrs['VID_fin'] = post_v
+        z_arr.attrs['VID_fin'] = stim_off.vol_id + post_v
         
         z_arr.attrs['FID_on'] = tail_df.loc[tail_df.vol_id == stim_on.vol_id, 'FrameID'].values[0]
         z_arr.attrs['VID_on'] = stim_on.vol_id
@@ -124,12 +139,12 @@ def main(args):
         # create a dark vol is background subtraction applied
         dark_vol = np.tile(dark_plane, (int(daq.pixelsPerLine-flyback),1,1)).astype(z_arr.dtype)
         # interate through each camera volume and fill with sliced dat vol
-        for i in trange(int(daq.numberOfScans)):
+        for i in trange(timepoints):
             volume = load_dats_for_vol(dat_loader,
                                         dat_dir, 
                                         file_names, 
-                                        trial_dat_slice_array[i], 
-                                        trial_dat_vol_arrays[i])[...,:-flyback]
+                                        trial_dat_vol_arrays[i], 
+                                        trial_dat_slice_array[i])[...,:-flyback]
             # reorder indices - t, z, y, x
             volume = volume.transpose(2,0,1)
             # subtract dark vol
@@ -141,18 +156,14 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Define the parameters used for converting dat files')
-    parser.add_argument('-pD', '--PathData', help="path to imaging directories data", default='.', type=str)
-    parser.add_argument('-pT', '--PathTracking', help="path to tracking directories data", default='.', type=str)
-    parser.add_argument('-pE', '--PathExport', help="path to export aggregated data", default='.', type=str)
-    parser.add_argument('-c', '--cLevel', help="Level of compression of zarr file." / 
-                        "Uses zstd Blosc.BITSHUFFLE compression. Default n = 5.",
-                        default=5, type=int)
-    parser.add_argument('-f', '--flyback', help="flyback frames used. Default n = 2.",
-                        default=2, type=int)
-    parser.add_argument('-pre', '--preStim', help="Seconds acquired before stimulus.",
-                        nargs='+', type=int)
-    parser.add_argument('-pos', '--posStim', help="Seconds acquired after stimulus.",
-                        nargs='+', type=int)
+    sys.argv = ['run.py', 
+                '--PathData', '/Volumes/TomMullen/20221124/f02_6dpf_huc_h2b', 
+                '--PathTracking', '/Volumes/TomMullen/20221124/f02_6dpf_huc_h2b/tracking/f02_6dpf_huc_h2b', 
+                '--PathExport', '/Volumes/TomMullen/20221124/f02_6dpf_huc_h2b/preocessed',
+                '--postStim', '15', '15', '15', '15',
+                '--preStim', '10', '10', '10', '10'
+                ]
+    print(sys.argv)
     args = parser.parse_args()
+    print(args)
     main(args)
