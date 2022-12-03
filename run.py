@@ -37,6 +37,7 @@ def main(args):
     # ---------------------------------
     dark_vol_dir = list(sorted(name for name in root_dir.glob("*dark*") if name.is_dir()))[-1]
     dark_vol_path = Path(f"{exp_dir}","dark_plane.npy")
+    logging.warning(f"\nDARK PLANE PATH\t{dark_vol_path}")
     dark_plane = make_dark_plane(dat_dir=dark_vol_dir, export_path=dark_vol_path)
     logging.info(f"Dark volume exported")
     # HR dir path
@@ -138,8 +139,9 @@ def main(args):
             # reorder indices - t, z, y, x
             volume = volume.transpose(2,0,1)
             # subtract dark vol
-            volume+=110
-            volume-=dark_vol
+            if args.SubtractDarkVol == 1:
+                volume+=110
+                volume-=dark_vol
                 
             z_arr.oindex[i] = volume
         logging.warning("Trial Exported")
@@ -159,6 +161,7 @@ if __name__ == "__main__":
     parser.add_argument('-pos', '--postStim', help="Seconds acquired after stimulus.",
                         nargs='+', type=int)
     
+    parser.add_argument('-dV', '--SubtractDarkVol', help="bool subtract darkvolume from volumes. Default true", default='1', type=int)
     args = parser.parse_args()
     logging.warning(args)
     
