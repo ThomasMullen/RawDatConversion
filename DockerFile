@@ -1,0 +1,32 @@
+FROM fedora:33
+
+# # Install Python
+RUN dnf -y update && \
+    dnf install -y python3-pip
+
+# Install python venv
+COPY requirements_v.txt .
+RUN pip3 install -r requirements_v.txt
+
+# make application dir
+RUN mkdir /application
+
+# Add to contain the project to application
+COPY ./data_conversion /application/src
+COPY ./tracking /application/utils
+COPY ./run.py /application
+
+COPY ./run.sh /application
+RUN chmod a+x /application/run.sh
+
+WORKDIR /application
+
+#RUN mkdir "/application/data"
+
+# Mounted -v cmd to datapoint
+#VOLUME ["/application/data"]
+
+# Additional arguments appended after entrypoint
+#ENTRYPOINT ["python", "run.py", "-pD /application/data"]
+
+## -pD /Volumes/TomOrgerLab/experimentSCAPE/20210628_fish1 -m 3 40 -dZ 5 -c 1 30 -r 0.1 400 400 -theta 76.2 -uvS 0.01
