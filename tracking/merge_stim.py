@@ -85,7 +85,9 @@ def merge_tracking(tracking_dir, exp_dir):
     
     # identify uv flash
     tail_df['uv']=0
-    tail_df.loc[tail_df.PhotodiodeValue>-.9, 'uv']=1
+    # define UV threshold based on mean photodioade value
+    uv_thresh = tail_df.PhotodiodeValue.mean() + .05
+    tail_df.loc[tail_df.PhotodiodeValue>uv_thresh, 'uv']=1
     
     # merge pulse cycle stimulus
     onset, offset, duration = find_onset_offset(tail_df.uv)
