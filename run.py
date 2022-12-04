@@ -84,6 +84,8 @@ def main(args):
     # calculate volume rate
     vol_rate = daq.pixelrate / daq.pixelsPerLine
     
+    frame_pad = args.UVPad
+    
     # iterate through each trial
     for trial_ix, (stim_on, stim_off, t_init, t_fin) in enumerate(zip(stim_onset.itertuples(), stim_offset.itertuples(), pre_ts, post_ts)):
         logging.warning(f"Trial {trial_ix} Started")
@@ -92,10 +94,10 @@ def main(args):
         post_v = np.ceil(vol_rate*t_fin).astype(int)
     
         # slice on the period and stimuli activity
-        trial_dat_slice_array = np.concatenate([dat_slice_array[stim_on.vol_id-pre_v:stim_on.vol_id], 
-                                                dat_slice_array[stim_off.vol_id+1:stim_off.vol_id+post_v]])
-        trial_dat_vol_arrays = np.concatenate([dat_vol_arrays[stim_on.vol_id-pre_v:stim_on.vol_id], 
-                                                dat_vol_arrays[stim_off.vol_id+1:stim_off.vol_id+post_v]])
+        trial_dat_slice_array = np.concatenate([dat_slice_array[stim_on.vol_id-pre_v:stim_on.vol_id-frame_pad], 
+                                                dat_slice_array[stim_off.vol_id+1+frame_pad:stim_off.vol_id+post_v]])
+        trial_dat_vol_arrays = np.concatenate([dat_vol_arrays[stim_on.vol_id-pre_v:stim_on.vol_id-frame_pad], 
+                                                dat_vol_arrays[stim_off.vol_id+1+frame_pad:stim_off.vol_id+post_v]])
         
         timepoints = len(trial_dat_slice_array)
             
@@ -121,10 +123,10 @@ def main(args):
         z_arr.attrs['FID_fin'] = (fid_vals[0], fid_vals[-1])
         z_arr.attrs['VID_fin'] = stim_off.vol_id + post_v
         
-        z_arr.attrs['FID_on'] = tail_df.loc[tail_df.vol_id == stim_on.vol_id, 'FrameID'].values[0]
+        z_arr.attrs['FID_on'] = tail_df.loc[tail_df.vol_id == stim_on.vol_id-frame_pad, 'FrameID'].values[0]
         z_arr.attrs['VID_on'] = stim_on.vol_id
         
-        z_arr.attrs['FID_off'] = tail_df.loc[tail_df.vol_id == stim_off.vol_id, 'FrameID'].values[-1]
+        z_arr.attrs['FID_off'] = tail_df.loc[tail_df.vol_id == stim_off.vol_id+frame_pad, 'FrameID'].values[-1]
         z_arr.attrs['VID_off'] = stim_off.vol_id
         
         # create a dark vol is background subtraction applied
@@ -156,6 +158,8 @@ if __name__ == "__main__":
                         default=5, type=int)
     parser.add_argument('-f', '--flyback', help="flyback frames used. Default n = 2.",
                         default=2, type=int)
+    parser.add_argument('-uvP', '--UVPad', help="Extra frames excluded from UV stimulation. Default n = 0.",
+                        default=0, type=int)
     parser.add_argument('-pre', '--preStim', help="Seconds acquired before stimulus.",
                         nargs='+', type=int)
     parser.add_argument('-pos', '--postStim', help="Seconds acquired after stimulus.",
