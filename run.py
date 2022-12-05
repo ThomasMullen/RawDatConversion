@@ -132,7 +132,8 @@ def main(args):
         z_arr.attrs['vol_rate'] = vol_rate
         z_arr.attrs['pre_stim_time'] = t_init
         z_arr.attrs['post_stim_time'] = t_fin
-        
+        z_arr.attrs['VID_stim_ix'] = (stim_on.vol_id-frame_pad) - (stim_on.vol_id-pre_v)
+        z_arr.attrs['VID_stim_ix'] = pre_v-frame_pad
         
         # create a dark vol is background subtraction applied
         dark_vol = np.tile(dark_plane, (int(daq.pixelsPerLine-flyback),1,1)).astype(z_arr.dtype)
