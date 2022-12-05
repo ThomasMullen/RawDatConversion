@@ -129,6 +129,11 @@ def main(args):
         z_arr.attrs['FID_off'] = tail_df.loc[tail_df.vol_id == stim_off.vol_id+frame_pad, 'FrameID'].values[-1]
         z_arr.attrs['VID_off'] = stim_off.vol_id
         
+        z_arr.attrs['vol_rate'] = vol_rate
+        z_arr.attrs['pre_stim_time'] = t_init
+        z_arr.attrs['post_stim_time'] = t_fin
+        
+        
         # create a dark vol is background subtraction applied
         dark_vol = np.tile(dark_plane, (int(daq.pixelsPerLine-flyback),1,1)).astype(z_arr.dtype)
         # interate through each camera volume and fill with sliced dat vol
