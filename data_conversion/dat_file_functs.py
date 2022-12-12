@@ -1,6 +1,7 @@
 import configparser
 from dataclasses import dataclass, field
 import numpy as np
+import mat73
 from pathlib import Path
 import logging
 
@@ -31,6 +32,8 @@ class Struct(object):
                 setattr(self, a, Struct(b) if isinstance(b, dict) else b)
 
 
+
+
 @dataclass
 class DatDimension:
     """
@@ -43,6 +46,28 @@ class DatDimension:
     y_crop: int
 
 
+@dataclass
+class PixelConversion:
+    """
+    Contain the conversion values in um per pixel
+    """
+    z_per_pix: int
+    y_per_pix: int
+    x_per_pix: int
+    xK_per_volt: int
+
+def get_pixel_space_calibration(info_path:str)-> PixelConversion:
+    """extracts from the info sheet the conversion factors from um to pixels
+
+    Args:
+        info_path (str): _info.mat filepath
+
+    Returns:
+        PixelConversion: structure conversion
+    """
+    GUIcalFactors = Struct(mat73.loadmat(Path(info_path))).info.GUIcalFactors
+    conversion = PixelConversion(GUIcalFactors.z_umPerPix, GUIcalFactors.y_umPerPix, GUIcalFactors.x_umPerPix, GUIcalFactors.xK_umPerVolt)
+    return conversion
 class DatLoader:
     
     def __init__(self, planes_per_datfile, n_rows, n_cols, x_crop, y_crop) -> None:

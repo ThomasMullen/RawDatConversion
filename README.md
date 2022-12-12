@@ -6,6 +6,23 @@ and also an `info.mat` file.
 To construct the raw `.dat` files into the 4D dataset (t, z, y, x) we need to know the configuration if the DAQ board and the experiment info file. This is wrapped in two separate classes: `Struct` and `LoadConfig` which is found in [`dat_file_functs.py`](./dat_file_functs.py).
 
 ## Load experiment info file
+`info` Contains:
+* `GUIcalFactors`
+* `loadParameters`
+* `dataDirectory`
+* `scanName`
+* `camera`
+* `objective`
+* `daq`
+* `HR`
+* `shutterToggle`
+* `blue_laser_output_power`
+* `laser_power`
+* `experiment_notes`
+* `scanStartTimeApprox`
+* `scanStatus`
+* `blue_laser_output_power_actual`
+
 ```python
 import mat73
 from pathlib import Path
