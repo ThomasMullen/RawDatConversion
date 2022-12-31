@@ -135,6 +135,7 @@ def main(args):
         z_arr.attrs['VID_stim_ix'] = (stim_on.vol_id-frame_pad) - (stim_on.vol_id-pre_v)
         z_arr.attrs['VID_stim_ix'] = pre_v-frame_pad
         z_arr.attrs['FID_stim_ix'] = tail_df.loc[tail_df.vol_id == pre_v-frame_pad, 'FrameID'].values[0]
+        z_arr.attrs['exp_name'] = Struct(mat73.loadmat(info_path)).info.scanName
         
         # create a dark vol is background subtraction applied
         dark_vol = np.tile(dark_plane, (int(daq.pixelsPerLine-flyback),1,1)).astype(z_arr.dtype)
