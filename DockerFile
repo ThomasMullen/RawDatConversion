@@ -5,8 +5,8 @@ RUN dnf -y update && \
     dnf install -y python3-pip
 
 # Install python venv
-COPY requirements_v.txt .
-RUN pip3 install -r requirements_v.txt
+COPY requirements.txt .
+RUN pip3 install -r requirements.txt
 
 # make application dir
 RUN mkdir /application
