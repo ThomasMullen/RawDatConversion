@@ -12,8 +12,8 @@ RUN pip3 install -r requirements.txt
 RUN mkdir /application
 
 # Add to contain the project to application
-COPY ./data_conversion /application/src
-COPY ./tracking /application/utils
+COPY ./data_conversion /application/data_conversion
+COPY ./tracking /application/tracking
 COPY ./run.py /application
 
 COPY ./run.sh /application
