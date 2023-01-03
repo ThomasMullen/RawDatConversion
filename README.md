@@ -83,3 +83,18 @@ dat_vol_arrays, dat_slice_array = map_dats_to_volume(daq, dat_loader.n_planes)
 ```
 
 This returns a list with each element corresponding to a camera volume which has an array of `.dat` file indexes and slices.
+
+# Running with Docker
+
+## Run on local computer
+You need to mount the data directory to docker container, see below for the example (this has interactive mode on hence `-it /bin/bash` argument).
+```bash
+# build docker
+docker build -t thomasmullen/dat-conversion:v.0 .
+# run local docker with a mounted datafile
+docker run -v /Volumes/TomMullen/10dpf20221119Fish01/quickrun_run1:/application/data -it thomasmullen/dat-conversion:v.0 /bin/bash
+```
+To run the docker container, specify the location of the bash script which call the python run script. Following this file custom the arguments defining how to convert the `.dat` files.
+```bash
+./run.sh --PathData /application/data/quickrun_run1/ --PathTracking /application/data/quickrun_run1/tracking/quickrun_run1 --PathExport /application/data/quickrun_run1/dat_process/ --preStim 10 10 10 10 --postStim 3 3 3 3 --SubtractDarkVol 1 -uvP 1
+```
