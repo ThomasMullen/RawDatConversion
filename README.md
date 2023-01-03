@@ -84,9 +84,10 @@ dat_vol_arrays, dat_slice_array = map_dats_to_volume(daq, dat_loader.n_planes)
 
 This returns a list with each element corresponding to a camera volume which has an array of `.dat` file indexes and slices.
 
-# Running with Docker
+Running with Docker
+---
+### Run on local computer
 
-## Run on local computer
 You need to mount the data directory to docker container, see below for the example (this has interactive mode on hence `-it /bin/bash` argument).
 ```bash
 # build docker
@@ -98,3 +99,59 @@ To run the docker container, specify the location of the bash script which call 
 ```bash
 ./run.sh --PathData /application/data/quickrun_run1/ --PathTracking /application/data/quickrun_run1/tracking/quickrun_run1 --PathExport /application/data/quickrun_run1/dat_process/ --preStim 10 10 10 10 --postStim 3 3 3 3 --SubtractDarkVol 1 -uvP 1
 ```
+
+### Running on CCU cluster: Using HT Condor
+This requires you to upload a submit file which is fairly restrictive. Data cannot be mounted but has to be allocated in the CCU storage cluster. Additional docker images cannot be locally called but have to be called from a hub service e.g. [dockerhub](https://hub.docker.com/).
+
+#### Example Condor submit file
+
+```bash
+# specify the docker hub service
+universe = docker
+# locate the docker image
+docker_image = docker.io/thomasmullen/dat-conversion:v.0
+# file wish to exectue
+executable = /application/run.sh
+# arguments passed through
+arguments =  --PathData $(fish_path)/quickrun_run1 --PathTracking $(fish_path)/quickrun_run1/tracking/quickrun_run1 --PathExport $(fish_path)/quickrun_run1/dat_process/ --preStim 10 10 10 10 --postStim 3 3 3 3 --SubtractDarkVol 1 -uvP 1
+
+# Specify required computation power
+request_cpus = 32
+request_memory = 8192
+request_gpus = 0
+
+# Locate where to store output log files
+output = $(fish_path)/output.txt
+error = $(fish_path)/error.txt
+log = $(fish_path)/log.txt
+
+# iterate through multiple experiments
+queue fish_path from (
+    /nfs/tank/orger/users/thomas.mullen/data/SCAPE/test_data/quickrun_run1
+)
+```
+
+Command line login example
+```bash
+ssh thomas.mullen@htcondor
+```
+
+Submit condor job
+```bash
+# Make condor submit file
+vim htc-scape-fish-test 
+
+# Submit file
+condor_submit htc-scape-fish-test
+
+# Check status
+condor_status
+
+# list all jobs
+condor_q nobatch
+
+# Remove a job
+condor_rm [ID]
+```
+
+
