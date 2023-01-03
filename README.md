@@ -103,6 +103,8 @@ To run the docker container, specify the location of the bash script which call 
 ### Running on CCU cluster: Using HT Condor
 This requires you to upload a submit file which is fairly restrictive. Data cannot be mounted but has to be allocated in the CCU storage cluster. Additional docker images cannot be locally called but have to be called from a hub service e.g. [dockerhub](https://hub.docker.com/).
 
+You can view existing jobs running on the htcondor [server](https://htcondor.champalimaud.pt/app/user/). You will have to log in using CCU credentials.
+
 #### Example Condor submit file
 
 ```bash
