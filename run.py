@@ -31,12 +31,13 @@ def main(args):
     create_directory(parent_path=exp_dir.parent, dir_name=f"{exp_dir.stem}")
     
     # define log file path
-    logging.basicConfig(filename=Path(f"{exp_dir.parent}",f"{exp_dir.stem}.log"),
-                    encoding='utf-8',    
-                    filemode='a',
-                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
-                    datefmt='%Y-%m-%d  %H:%M:%S',
-                    level=logging.DEBUG)
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    fhandler = logging.FileHandler(filename=Path(f"{exp_dir.parent}",f"{exp_dir.stem}.log"), mode='a')
+    logger.addHandler(fhandler)
+    logging.warning('This is a warning message')
+    formatter = logging.Formatter('%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s')
+    fhandler.setFormatter(formatter)
 
     # print out the args
     logging.warning(f"\nROOT DATA PATH\t{root_dir}\nEXPORT PATH\t{exp_dir}")

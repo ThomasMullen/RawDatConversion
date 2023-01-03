@@ -15,7 +15,7 @@ def create_directory(parent_path, dir_name=''):
         logging.warning(f"Directory '{dir_path}' already exists.")
         return dir_path
     # otherwise make directory
-    dir_path.mkdir()
+    dir_path.mkdir(exist_ok=True)
     logging.warning(f"Directory '{dir_path}' created.")
     return dir_path
 
