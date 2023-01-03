@@ -17,6 +17,17 @@ from tracking.merge_stim import merge_tracking
 
 
 def main(args):
+    # define log file path
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    fhandler = logging.FileHandler(filename=Path(f"{exp_dir.parent}",f"{exp_dir.stem}.log"), mode='a')
+    logger.addHandler(fhandler)
+    logging.info('Initiate log file')
+    formatter = logging.Formatter('%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s')
+    fhandler.setFormatter(formatter)
+    # Arguments used
+    logging.info(args)
+    
     # Argument Checks
     assert len(args.preStim)==len(args.postStim), f"mismatch with {len(args.preStim)} pre-stimulus and {len(args.postStim)} post-stimulus periods"
     pre_ts = args.preStim
@@ -30,23 +41,15 @@ def main(args):
     
     create_directory(parent_path=exp_dir.parent, dir_name=f"{exp_dir.stem}")
     
-    # define log file path
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
-    fhandler = logging.FileHandler(filename=Path(f"{exp_dir.parent}",f"{exp_dir.stem}.log"), mode='a')
-    logger.addHandler(fhandler)
-    logging.warning('This is a warning message')
-    formatter = logging.Formatter('%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s')
-    fhandler.setFormatter(formatter)
 
     # print out the args
-    logging.warning(f"\nROOT DATA PATH\t{root_dir}\nEXPORT PATH\t{exp_dir}")
+    logging.info(f"\nROOT DATA PATH\t{root_dir}\nEXPORT PATH\t{exp_dir}")
 
     # 2: Make dark volume
     # ---------------------------------
     dark_vol_dir = list(sorted(name for name in root_dir.glob("*dark*") if name.is_dir()))[-1]
     dark_vol_path = Path(f"{exp_dir}","dark_plane.npy")
-    logging.warning(f"\nDARK PLANE PATH\t{dark_vol_path}")
+    logging.info(f"\nDARK PLANE PATH\t{dark_vol_path}")
     dark_plane = make_dark_plane(dat_dir=dark_vol_dir, export_path=dark_vol_path)
     logging.info(f"Dark volume exported")
     # HR dir path
@@ -92,12 +95,13 @@ def main(args):
     
     # calculate volume rate
     vol_rate = daq.pixelrate / daq.pixelsPerLine
+    logging.info(f"volume rate {vol_rate}")
     
     frame_pad = args.UVPad
     
     # iterate through each trial
     for trial_ix, (stim_on, stim_off, t_init, t_fin) in enumerate(zip(stim_onset.itertuples(), stim_offset.itertuples(), pre_ts, post_ts)):
-        logging.warning(f"Trial {trial_ix} Started")
+        logging.info(f"Trial {trial_ix} Started")
         # calculate initial vol_ix
         pre_v = np.ceil(vol_rate*t_init).astype(int)
         post_v = np.ceil(vol_rate*t_fin).astype(int)
@@ -163,7 +167,7 @@ def main(args):
                 volume-=dark_vol
                 
             z_arr.oindex[i] = volume
-        logging.warning("Trial Exported")
+        logging.info("Trial Exported")
 
 
 if __name__ == "__main__":
@@ -184,6 +188,6 @@ if __name__ == "__main__":
     
     parser.add_argument('-dV', '--SubtractDarkVol', help="bool subtract darkvolume from volumes. Default true", default='1', type=int)
     args = parser.parse_args()
-    logging.warning(args)
+    
     
     main(args)
