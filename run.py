@@ -193,5 +193,16 @@ if __name__ == "__main__":
     parser.add_argument('-dV', '--SubtractDarkVol', help="bool subtract darkvolume from volumes. Default true", default='1', type=int)
     args = parser.parse_args()
     
+    # debug
+    args=argparse.Namespace(PathData="/Volumes/TomMullen/20221124/f02_6dpf_huc_h2b",
+                            PathTracking="/Volumes/TomMullen/20221124/f02_6dpf_huc_h2b/tracking/f02_6dpf_huc_h2b",
+                            PathExport="/Volumes/TomMullen/20221124/f02_6dpf_huc_h2b/dat_process",
+                            cLevel=5,
+                            flyback=2,
+                            UVPad=2,
+                            preStim=[300, 300, 300, 300],
+                            postStim=[300, 300, 300, 600],
+                            SubtractDarkVol=1
+                            )
     
     main(args)
