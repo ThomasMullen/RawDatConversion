@@ -17,6 +17,12 @@ from tracking.merge_stim import merge_tracking
 
 
 def main(args):
+    # 1: define paths
+    # ---------------------------------
+    root_dir = Path(args.PathData)
+    tracking_dir = Path(args.PathTracking)
+    exp_dir = Path(args.PathExport)
+    
     # define log file path
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
@@ -33,14 +39,7 @@ def main(args):
     pre_ts = args.preStim
     post_ts = args.postStim
     
-    # 1: define paths
-    # ---------------------------------
-    root_dir = Path(args.PathData)
-    tracking_dir = Path(args.PathTracking)
-    exp_dir = Path(args.PathExport)
-    
     create_directory(parent_path=exp_dir.parent, dir_name=f"{exp_dir.stem}")
-    
 
     # print out the args
     logging.info(f"\nROOT DATA PATH\t{root_dir}\nEXPORT PATH\t{exp_dir}")
@@ -102,10 +101,15 @@ def main(args):
     # iterate through each trial
     for trial_ix, (stim_on, stim_off, t_init, t_fin) in enumerate(zip(stim_onset.itertuples(), stim_offset.itertuples(), pre_ts, post_ts)):
         logging.info(f"Trial {trial_ix} Started")
+        logging.info(f"iterables\n{trial_ix}, {stim_on}, {stim_off}, {t_init}, {t_fin}")
         # calculate initial vol_ix
         pre_v = np.ceil(vol_rate*t_init).astype(int)
         post_v = np.ceil(vol_rate*t_fin).astype(int)
+        logging.info(f"pre_v {pre_v}")
+        logging.info(f"post_v {post_v}")
     
+        logging.info(f"initial {stim_on.vol_id-pre_v}, {stim_on.vol_id-frame_pad}")
+        logging.info(f"final {stim_off.vol_id+1+frame_pad}, {stim_off.vol_id+post_v}")
         # slice on the period and stimuli activity
         trial_dat_slice_array = np.concatenate([dat_slice_array[stim_on.vol_id-pre_v:stim_on.vol_id-frame_pad], 
                                                 dat_slice_array[stim_off.vol_id+1+frame_pad:stim_off.vol_id+post_v]])
