@@ -9,6 +9,7 @@ import mat73
 from tqdm import trange
 import cProfile, pstats
 import io
+import itertools
 
 from data_conversion.dat_conversion import make_dark_plane, convert_dat_to_arr
 from data_conversion.dat_file_functs import Struct, LoadConfig, calc_total_planes, create_directory
@@ -111,10 +112,10 @@ def main(args):
         logging.info(f"initial {stim_on.vol_id-pre_v}, {stim_on.vol_id-frame_pad}")
         logging.info(f"final {stim_off.vol_id+1+frame_pad}, {stim_off.vol_id+post_v}")
         # slice on the period and stimuli activity
-        trial_dat_slice_array = np.concatenate([dat_slice_array[stim_on.vol_id-pre_v:stim_on.vol_id-frame_pad], 
-                                                dat_slice_array[stim_off.vol_id+1+frame_pad:stim_off.vol_id+post_v]])
-        trial_dat_vol_arrays = np.concatenate([dat_vol_arrays[stim_on.vol_id-pre_v:stim_on.vol_id-frame_pad], 
-                                                dat_vol_arrays[stim_off.vol_id+1+frame_pad:stim_off.vol_id+post_v]])
+        trial_dat_slice_array = list(itertools.chain(*[dat_slice_array[stim_on.vol_id-pre_v:stim_on.vol_id-frame_pad], 
+                                                dat_slice_array[stim_off.vol_id+1+frame_pad:stim_off.vol_id+post_v]]))
+        trial_dat_vol_arrays = list(itertools.chain(*[dat_vol_arrays[stim_on.vol_id-pre_v:stim_on.vol_id-frame_pad], 
+                                                dat_vol_arrays[stim_off.vol_id+1+frame_pad:stim_off.vol_id+post_v]]))
         
         timepoints = len(trial_dat_slice_array)
             
