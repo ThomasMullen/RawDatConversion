@@ -10,3 +10,4 @@ tifffile
 tqdm
 zarr
 scikit-image
+bg-space
