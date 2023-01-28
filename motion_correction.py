@@ -129,9 +129,10 @@ if __name__ == "__main__":
     # change to low space
     hr_converter = get_pixel_space_calibration(hr_info_path)
     lr_converter = get_pixel_space_calibration(info_path)
-    hr_space = AnatomicalSpace("pli", resolution=(hr_converter.z_umPerPix, hr_converter.y_umPerPix, hr_converter.x_umPerPix))
+    hr_space = AnatomicalSpace("pli", resolution=(hr_converter.z_per_pix, hr_converter.y_per_pix, hr_converter.x_per_pix))
+    lr_space = AnatomicalSpace("pli", resolution=(lr_converter.z_per_pix, lr_converter.y_per_pix, lr_converter.x_per_pix))
     
-    mapped_hr = hr_space.map_stack_to((lr_converter.z_umPerPix, lr_converter.y_umPerPix, lr_converter.x_umPerPix), hr_volume)
+    mapped_hr = hr_space.map_stack_to(lr_space, hr_volume)
     
     
     
