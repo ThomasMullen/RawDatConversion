@@ -217,10 +217,30 @@ if __name__ == "__main__":
                     flyback, 
                     dark_plane)
     
-
     
     # # change to low space
     mapped_hr = downsample_hr_vol(hr_info_path, info_path, lr_volume, hr_volume)
+  
+    # 2: Test motion correction
+    # ---------------------------------
+  
+    #  check image layouts
+    from skimage.measure import block_reduce
+    import matplotlib.pyplot as plt
+    fig, (ax1, ax2) = plt.subplots(1,2,figsize=(8,5))
+    ax1.imshow(block_reduce(np.clip(lr_volume,0,220), block_size=(1,1,1), func=np.median)[60])
+    ax2.imshow(block_reduce(mapped_hr, block_size=(1,1,1), func=np.median)[60])
+    
+    # apply test shift correction
+    from skimage.registration import phase_cross_correlation
+    import scipy.ndimage as ndi
+    
+    shifts = phase_cross_correlation(mapped_hr, lr_volume, upsample_factor=10, space='real', return_error=False)
+    aligned_frame = ndi.shift(lr_volume, tuple(shifts), cval=0., mode='constant', prefilter=True, order=3)
+    
+    fig, (ax1, ax2) = plt.subplots(1,2,figsize=(8,5))
+    ax1.imshow(block_reduce(np.clip(lr_volume,0,150), block_size=(1,1,1), func=np.mean)[60])
+    ax2.imshow(block_reduce(mapped_hr, block_size=(1,1,1), func=np.mean)[60])  
   
         
     # calculate volume rate
