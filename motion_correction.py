@@ -243,6 +243,8 @@ if __name__ == "__main__":
     ax2.imshow(block_reduce(mapped_hr, block_size=(1,1,1), func=np.mean)[60])  
   
         
+    # 2: Load all volumes
+    # ---------------------------------
     # calculate volume rate
     vol_rate = daq.pixelrate / daq.pixelsPerLine
     logging.info(f"volume rate {vol_rate}")
