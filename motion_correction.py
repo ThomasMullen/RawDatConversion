@@ -14,9 +14,65 @@ import itertools
 from bg_space import AnatomicalSpace
 
 from data_conversion.dat_conversion import make_dark_plane, convert_dat_to_arr
-from data_conversion.dat_file_functs import Struct, LoadConfig, calc_total_planes, create_directory, get_pixel_space_calibration
+from data_conversion.dat_file_functs import Struct, LoadConfig, DatLoader, calc_total_planes, create_directory, get_pixel_space_calibration
 from data_conversion.data_stream_io import map_dats_to_volume, load_dats_for_vol
 from tracking.merge_stim import merge_tracking
+
+
+def load_single_vol(vol_id:int, dat_loader:DatLoader, dat_dir:str, file_names:list[str], dat_vol_arrays: tuple, dat_slice_array:tuple, daq:Struct, flyback:int, dark_plane:np.ndarray=None)->np.ndarray:
+    """load a single volume
+
+    Args:
+        vol_id (int): volume index wantto pull out from the experiment
+        dat_loader (DatLoader): dat lodaer class
+        dat_dir (str): directory with dat files
+        file_names (list[str]): file names of the dat files
+        dat_vol_arrays (tuple): list with the dat volumes that compose a volumes
+        dat_slice_array (tuple): slices of each dat volume used to make the image volume
+        daq (Struct): daq structure
+        flyback (int): flyback frames used
+        dark_plane (np.ndarray, optional): dark plane imaged. Defaults to None.
+
+    Returns:
+        np.ndarry: volume
+    """
+    volume = load_dats_for_vol(dat_loader,
+                                        dat_dir, 
+                                        file_names, 
+                                        dat_vol_arrays[vol_id], 
+                                        dat_slice_array[vol_id])[...,:-flyback]
+    volume = volume.transpose(2,0,1)
+    if dark_plane is None:
+        return volume
+    
+    # subtract dark vol
+    dark_vol = np.tile(dark_plane, (int(daq.pixelsPerLine-flyback),1,1)).astype(volume.dtype)
+    volume+=110
+    volume-=dark_vol
+    return volume
+
+
+def downsample_hr_vol(hr_info_path:str, lr_info_path:str, lr_vol:np.ndarray, hr_vol:np.ndarray)->np.ndarray:
+    """downsample high resolution vol to match low resoluion vol
+
+    Args:
+        hr_info_path (str): info mat file for high res
+        lr_info_path (str): info mat file for low res
+        lr_vol (np.ndarray): low res volume
+        hr_vol (np.ndarray): high res volum
+
+    Returns:
+        np.ndarray: down sampled high res volume to match low res volume
+    """
+    print(lr_vol.shape, hr_vol.shape)
+    # change to low space
+    hr_converter = get_pixel_space_calibration(hr_info_path)
+    lr_converter = get_pixel_space_calibration(lr_info_path)
+    hr_space = AnatomicalSpace("pli", resolution=(hr_converter.x_per_pix, hr_converter.y_per_pix, hr_converter.z_per_pix))
+    lr_space = AnatomicalSpace("pli", resolution=(hr_vol.shape[0]/lr_vol.shape[0], lr_converter.y_per_pix, lr_converter.z_per_pix))
+    downsampled_vol = hr_space.map_stack_to(lr_space, hr_vol)
+    print(lr_vol.shape, downsampled_vol.shape)
+    return downsampled_vol
 
 
 if __name__ == "__main__":
@@ -108,38 +164,24 @@ if __name__ == "__main__":
             int(daq.pixelsPerLine-flyback),
             dat_loader.x_crop,
             dat_loader.y_crop)
-    # high res dark vol
-    dark_vol = np.tile(dark_plane, (int(daq.pixelsPerLine-flyback),1,1)).astype(np.uint16)
     
     # load high resolution volume
-    hr_volume = load_dats_for_vol(dat_loader,
-                                    hr_dat_dir, 
-                                    file_names, 
-                                    dat_vol_arrays[0], 
-                                    dat_slice_array[0])[...,:-flyback]
-    # reorder indices - t, z, y, x
-    hr_volume = hr_volume.transpose(2,0,1)
-    # subtract background
-    hr_volume+=110
-    hr_volume-=dark_vol
+    hr_volume = load_single_vol(0, 
+                        dat_loader, 
+                        hr_dat_dir, 
+                        file_names, 
+                        dat_vol_arrays, 
+                        dat_slice_array, 
+                        daq, 
+                        flyback, 
+                        dark_plane)
     
     # save the high resolution volume as a tiff
     skio.imsave(Path(f"{exp_dir}","high_resolution.tif"), hr_volume.astype(np.uint16))
     
-    # change to low space
-    hr_converter = get_pixel_space_calibration(hr_info_path)
-    lr_converter = get_pixel_space_calibration(info_path)
-    hr_space = AnatomicalSpace("pli", resolution=(hr_converter.z_per_pix, hr_converter.y_per_pix, hr_converter.x_per_pix))
-    lr_space = AnatomicalSpace("pli", resolution=(lr_converter.z_per_pix, lr_converter.y_per_pix, lr_converter.x_per_pix))
     
-    mapped_hr = hr_space.map_stack_to(lr_space, hr_volume)
-    
-    
-    
-    
-    
-    
-    
+    # 2: Load Low Res Volume
+    # ---------------------------------
     dat_dir = list(sorted((name for name in root_dir.glob(f"*{root_dir.stem}*") if 
                            "HR" not in str(name) and 
                            "dark" not in str(name) and 
@@ -162,6 +204,25 @@ if __name__ == "__main__":
     # prepare slices and dat vols for each camera vol
     dat_vol_arrays, dat_slice_array = map_dats_to_volume(daq, dat_loader.n_planes)
     
+    
+    # load sample low-res vol
+    i = 276
+    lr_volume = load_single_vol(i, 
+                    dat_loader, 
+                    dat_dir, 
+                    file_names, 
+                    dat_vol_arrays, 
+                    dat_slice_array, 
+                    daq, 
+                    flyback, 
+                    dark_plane)
+    
+
+    
+    # # change to low space
+    mapped_hr = downsample_hr_vol(hr_info_path, info_path, lr_volume, hr_volume)
+  
+        
     # calculate volume rate
     vol_rate = daq.pixelrate / daq.pixelsPerLine
     logging.info(f"volume rate {vol_rate}")
