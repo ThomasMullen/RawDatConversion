@@ -121,29 +121,23 @@ if __name__ == "__main__":
     logging.info(f"\nROOT DATA PATH\t{root_dir}\nEXPORT PATH\t{exp_dir}")
 
 
-    # 3: Split on UV behaviour
+    # 2: Split on UV behaviour
     # ---------------------------------
     # infer the behaviour mapping and UV stimulation
     tail_df, stim_onset, stim_offset = merge_tracking(tracking_dir, exp_dir)
     assert stim_offset.shape[0] == len(post_ts), "Number of detected stimuli need to match the number of periods"
     
-    # Export each section with volume:frameID
     
-    
-    # 4: Load the dat files and iterate through each section
+    # 3: Make dark volume
     # ---------------------------------
     flyback = args.flyback
-    
-    
-    # 2: Make dark volume
-    # ---------------------------------
     dark_vol_dir = list(sorted(name for name in root_dir.glob("*dark*") if name.is_dir()))[-1]
     dark_vol_path = Path(f"{exp_dir}","dark_plane.npy")
     logging.info(f"\nDARK PLANE PATH\t{dark_vol_path}")
     dark_plane = make_dark_plane(dat_dir=dark_vol_dir, export_path=dark_vol_path)
     logging.info(f"Dark volume exported")
     
-    # 2: High Res Volume
+    # 4: High Res Volume
     # ---------------------------------
     # HR dir path
     hr_dat_dir = list(sorted((name for name in root_dir.glob("**/") if 
@@ -185,7 +179,7 @@ if __name__ == "__main__":
     skio.imsave(Path(f"{exp_dir}","high_resolution.tif"), hr_volume.astype(np.uint16))
     
     
-    # 2: Load Low Res Volume
+    # 5: Load Low Res Volume
     # ---------------------------------
     dat_dir = list(sorted((name for name in root_dir.glob(f"*{root_dir.stem}*") if 
                            "HR" not in str(name) and 
@@ -228,7 +222,7 @@ if __name__ == "__main__":
     # # change to low space
     mapped_hr = downsample_hr_vol(hr_info_path, info_path, lr_volume, hr_volume)
   
-    # 2: Test motion correction
+    # 6: Test motion correction
     # ---------------------------------
     fig, (ax1, ax2) = plt.subplots(1,2,figsize=(8,5))
     ax1.imshow(block_reduce(np.clip(lr_volume,0,220), block_size=(1,1,1), func=np.median)[60])
@@ -247,7 +241,7 @@ if __name__ == "__main__":
     fig.savefig(f"{exp_dir}/motion_correction_comparison.png")
   
         
-    # 2: Load all volumes
+    # 7: Load all volumes
     # ---------------------------------
     # calculate volume rate
     vol_rate = daq.pixelrate / daq.pixelsPerLine
