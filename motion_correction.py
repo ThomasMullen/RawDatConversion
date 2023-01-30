@@ -226,21 +226,22 @@ if __name__ == "__main__":
   
     #  check image layouts
     from skimage.measure import block_reduce
+    from skimage.registration import phase_cross_correlation
+    import scipy.ndimage as ndi
     import matplotlib.pyplot as plt
     fig, (ax1, ax2) = plt.subplots(1,2,figsize=(8,5))
     ax1.imshow(block_reduce(np.clip(lr_volume,0,220), block_size=(1,1,1), func=np.median)[60])
     ax2.imshow(block_reduce(mapped_hr, block_size=(1,1,1), func=np.median)[60])
     
-    # apply test shift correction
-    from skimage.registration import phase_cross_correlation
-    import scipy.ndimage as ndi
-    
     shifts = phase_cross_correlation(mapped_hr, np.clip(lr_volume,0,200), upsample_factor=10, space='real', return_error=False)
+    # apply test shift correction
     aligned_frame = ndi.shift(lr_volume, tuple(shifts), cval=0., mode='constant', prefilter=True, order=3)
     
-    fig, (ax1, ax2) = plt.subplots(1,2,figsize=(8,5))
+    fig, (ax1, ax2, ax3) = plt.subplots(1,3,figsize=(8,5))
     ax1.imshow(block_reduce(np.clip(aligned_frame,0,150), block_size=(1,1,1), func=np.mean)[60])
-    ax2.imshow(block_reduce(mapped_hr, block_size=(1,1,1), func=np.mean)[60])  
+    ax2.imshow(block_reduce(mapped_hr, block_size=(1,1,1), func=np.mean)[60], alpha=.6, cmap='Oranges')
+    ax2.imshow(block_reduce(np.clip(aligned_frame,0,150), block_size=(1,1,1), func=np.mean)[60], alpha=.8, cmap='Blues')
+    ax3.imshow(block_reduce(mapped_hr, block_size=(1,1,1), func=np.mean)[60])  
   
         
     # 2: Load all volumes
