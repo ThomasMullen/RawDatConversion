@@ -353,10 +353,11 @@ if __name__ == "__main__":
                 volume-=dark_vol
             
             # rough motion correction
-            volume = volume[volume > 300] = np.median(volume)
+            volume[volume > 300] = np.median(volume)
             shifts = phase_cross_correlation(mapped_hr, np.clip(volume,0,200), upsample_factor=10, space='real', return_error=False)
             aligned_frame = ndi.shift(volume, tuple(shifts), cval=0., mode='constant', prefilter=True, order=3)
             
             z_arr.oindex[i] = volume
+            timeseries_shifts.append(shifts)
         np.save(f"{exp_dir}/shifts{trial_ix}.npy", np.array(timeseries_shifts))
         logging.info("Trial Exported")
