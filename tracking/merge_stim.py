@@ -1,6 +1,8 @@
 from pathlib import Path
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+from tracking.smoothing_functs import one_euro_filter
 
 def add_uv_column(cam_df:pd.DataFrame, stim_df:pd.DataFrame)->pd.DataFrame:
     
@@ -41,7 +43,7 @@ def find_onset_offset(binary_serie):
     duration = offset - onset
     return onset, offset, duration
 
-def merge_tracking(tracking_dir, exp_dir):
+def merge_tracking(tracking_dir, exp_dir, verbose=True):
     # create file path
     tracking_dir = Path(tracking_dir)
     cam_path = Path(f"{tracking_dir}",f"{tracking_dir.stem}scape sync reader.txt")
@@ -51,7 +53,7 @@ def merge_tracking(tracking_dir, exp_dir):
     # make hdf5 file
     store = pd.HDFStore(f'{exp_dir}/store.h5')
     
-    stim_df = pd.read_csv(stim_path, delimiter=' ')
+    stim_df = pd.read_csv(stim_path, delimiter=' ') # catch if broken
     cam_df = pd.read_csv(cam_path, delimiter=' ')
     tail_df = pd.read_csv(tail_path, delimiter=' ')
     tail_df=cam_df.merge(tail_df,how='right',on='FrameID').ffill()
@@ -65,14 +67,31 @@ def merge_tracking(tracking_dir, exp_dir):
         'angle13', 'angle14', 'angle15']]
     df = df.cumsum(axis=1).rename(
         columns = lambda x: 'cum_' + x)
+    # smooth signal
+    df = df.apply(one_euro_filter, axis=0, raw=True, fc_min=.2, beta=3, rate=700)
+    if verbose:
+        # save tail trace
+        fig, ax = plt.subplots()
+        df.cum_angle10.plot(ax=ax, title="tail trace")
+        fig.savefig(f"{exp_dir}/tail_trace.png")
+        df.cum_angle10[5000:6000].plot(ax=ax, title="tail trace")
+        fig.savefig(f"{exp_dir}/short_tail_trace.png")
+    
     tail_df = pd.concat([tail_df, df], axis=1)
     
     
     ''' Create a vol_id to merge with imaging volumes '''
     # find where galvo changes
     cam_df['galvo_diff'] = cam_df.GalvoValue.diff().abs()
+    # save galvo diff
+    if verbose:
+        fig, ax = plt.subplots()
+        cam_df.galvo_diff.plot(ax=ax, title="galvo diff")
+        fig.savefig(f"{exp_dir}/galvo_diff.png")
+        cam_df.GalvoValue.plot(ax=ax, title="galvo vals")
+        fig.savefig(f"{exp_dir}/galvo_vals.png")
     # returns rows of galvo changes
-    df_filtered_galvo = cam_df[cam_df.galvo_diff>1]
+    df_filtered_galvo = cam_df[cam_df.galvo_diff>.5]
     vol_id = pd.DataFrame(np.arange(df_filtered_galvo.shape[0]+1), 
                           columns=['vol_id'], 
                           index= np.insert(df_filtered_galvo.index.values,0,0))
