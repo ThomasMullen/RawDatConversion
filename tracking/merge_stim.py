@@ -105,10 +105,10 @@ def merge_tracking(tracking_dir, exp_dir, verbose=True):
         
     # returns rows of galvo changes
     df_filtered_galvo = cam_df[cam_df.galvo_diff>.5]
-    vol_id = pd.DataFrame(np.arange(df_filtered_galvo.shape[0]+1), 
+    vol_id = pd.DataFrame(np.arange(df_filtered_galvo.shape[0]), 
                           columns=['vol_id'], 
-                          index= np.insert(df_filtered_galvo.index.values,0,0))
-    vol_id['frame_id'] = np.append(cam_df.iloc[0, 0], df_filtered_galvo.FrameID.values)
+                          index= df_filtered_galvo.index.values)
+    vol_id['frame_id'] = df_filtered_galvo.FrameID.values
     # merge vol and frame id onto original behaviour tracking df
     tail_df = tail_df.merge(vol_id, how='left', left_on='FrameID', right_on='frame_id').ffill()
     # format vol_id
