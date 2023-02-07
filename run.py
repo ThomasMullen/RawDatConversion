@@ -212,8 +212,6 @@ if __name__ == "__main__":
                         nargs='+', type=int)
     parser.add_argument('-m', '--MIP', help="Save a max intensity projection of cleaned volumes. Default n = 1.",
                         default=1, type=int)
-    parser.add_argument('-pre', '--preStim', help="Seconds acquired before stimulus.",
-                        nargs='+', type=int)
     parser.add_argument('-pos', '--postStim', help="Seconds acquired after stimulus.",
                         nargs='+', type=int)
     parser.add_argument('-dV', '--SubtractDarkVol', help="bool subtract darkvolume from volumes. Default true", default='1', type=int)
