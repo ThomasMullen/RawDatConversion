@@ -58,7 +58,7 @@ def merge_tracking(tracking_dir, exp_dir, verbose=True):
     stim_df = pd.read_csv(stim_path, delimiter=' ') # catch if broken
     cam_df = pd.read_csv(cam_path, delimiter=' ')
     tail_df = pd.read_csv(tail_path, delimiter=' ')
-    tail_df=cam_df.merge(tail_df,how='r ight',on='FrameID').ffill()
+    tail_df=cam_df.merge(tail_df,how='right',on='FrameID').ffill()
     # drop any nans
     tail_df.dropna(axis=0, inplace=True)
     
