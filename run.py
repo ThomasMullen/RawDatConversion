@@ -10,6 +10,8 @@ from tqdm import trange
 import cProfile, pstats
 import io
 import itertools
+from skimage.measure import block_reduce
+import tifffile
 
 from data_conversion.dat_conversion import make_dark_plane, convert_dat_to_arr
 from data_conversion.dat_file_functs import Struct, LoadConfig, calc_total_planes, create_directory
@@ -39,7 +41,7 @@ def main(args):
     assert len(args.preStim)==len(args.postStim), f"mismatch with {len(args.preStim)} pre-stimulus and {len(args.postStim)} post-stimulus periods"
     pre_ts = args.preStim
     post_ts = args.postStim
-    
+    mip = bool(args.MIP)
     create_directory(parent_path=exp_dir.parent, dir_name=f"{exp_dir.stem}")
 
     # print out the args
@@ -97,7 +99,7 @@ def main(args):
     vol_rate = daq.pixelrate / daq.pixelsPerLine
     logging.info(f"volume rate {vol_rate}")
     
-    frame_pad = args.UVPad
+    pre_frame_pad, post_frame_pad = args.UVPad
     
     # iterate through each trial
     for trial_ix, (stim_on, stim_off, t_init, t_fin) in enumerate(zip(stim_onset.itertuples(), stim_offset.itertuples(), pre_ts, post_ts)):
@@ -109,13 +111,13 @@ def main(args):
         logging.info(f"pre_v {pre_v}")
         logging.info(f"post_v {post_v}")
     
-        logging.info(f"\n\ninitial exp-vol: {stim_on.vol_id-pre_v}\t initial stim-vol: {stim_on.vol_id-frame_pad}")
-        logging.info(f"final stim-vol: {stim_off.vol_id+1+frame_pad}\t final exp-vol: {stim_off.vol_id+post_v}\n\n")
+        logging.info(f"\n\ninitial exp-vol: {stim_on.vol_id-pre_v}\t initial stim-vol: {stim_on.vol_id-pre_frame_pad}")
+        logging.info(f"final stim-vol: {stim_off.vol_id+1+post_frame_pad}\t final exp-vol: {stim_off.vol_id+post_v}\n\n")
         # slice on the period and stimuli activity
-        trial_dat_slice_array = list(itertools.chain(*[dat_slice_array[stim_on.vol_id-pre_v:stim_on.vol_id-frame_pad], 
-                                                dat_slice_array[stim_off.vol_id+1+frame_pad:stim_off.vol_id+post_v]]))
-        trial_dat_vol_arrays = list(itertools.chain(*[dat_vol_arrays[stim_on.vol_id-pre_v:stim_on.vol_id-frame_pad], 
-                                                dat_vol_arrays[stim_off.vol_id+1+frame_pad:stim_off.vol_id+post_v]]))
+        trial_dat_slice_array = list(itertools.chain(*[dat_slice_array[stim_on.vol_id-pre_v:stim_on.vol_id-pre_frame_pad], 
+                                                dat_slice_array[stim_off.vol_id+1+post_frame_pad:stim_off.vol_id+post_v]]))
+        trial_dat_vol_arrays = list(itertools.chain(*[dat_vol_arrays[stim_on.vol_id-pre_v:stim_on.vol_id-pre_frame_pad], 
+                                                dat_vol_arrays[stim_off.vol_id+1+post_frame_pad:stim_off.vol_id+post_v]]))
         
         timepoints = len(trial_dat_slice_array)
             
@@ -141,22 +143,27 @@ def main(args):
         z_arr.attrs['FID_fin'] = (fid_vals[0], fid_vals[-1])
         z_arr.attrs['VID_fin'] = stim_off.vol_id + post_v
         
-        z_arr.attrs['FID_on'] = tail_df.loc[tail_df.vol_id == stim_on.vol_id-frame_pad, 'FrameID'].values[0]
+        z_arr.attrs['FID_on'] = tail_df.loc[tail_df.vol_id == stim_on.vol_id-pre_frame_pad, 'FrameID'].values[0]
         z_arr.attrs['VID_on'] = stim_on.vol_id
         
-        z_arr.attrs['FID_off'] = tail_df.loc[tail_df.vol_id == stim_off.vol_id+frame_pad, 'FrameID'].values[-1]
+        z_arr.attrs['FID_off'] = tail_df.loc[tail_df.vol_id == stim_off.vol_id+post_frame_pad, 'FrameID'].values[-1]
         z_arr.attrs['VID_off'] = stim_off.vol_id
         
         z_arr.attrs['vol_rate'] = vol_rate
         z_arr.attrs['pre_stim_time'] = t_init
         z_arr.attrs['post_stim_time'] = t_fin
-        z_arr.attrs['VID_stim_ix'] = (stim_on.vol_id-frame_pad) - (stim_on.vol_id-pre_v)
-        z_arr.attrs['VID_stim_ix'] = pre_v-frame_pad
-        z_arr.attrs['FID_stim_ix'] = tail_df.loc[tail_df.vol_id == pre_v-frame_pad, 'FrameID'].values[0]
+        z_arr.attrs['VID_stim_ix'] = (stim_on.vol_id-pre_frame_pad) - (stim_on.vol_id-pre_v)
+        z_arr.attrs['VID_stim_ix'] = pre_v-pre_frame_pad
+        z_arr.attrs['FID_stim_ix'] = tail_df.loc[tail_df.vol_id == pre_v-pre_frame_pad, 'FrameID'].values[0]
         z_arr.attrs['exp_name'] = Struct(mat73.loadmat(info_path)).info.scanName
         
         # create a dark vol is background subtraction applied
         dark_vol = np.tile(dark_plane, (int(daq.pixelsPerLine-flyback),1,1)).astype(z_arr.dtype)
+        
+        # Max intensiry projection
+        if mip:
+            mip_arr = []
+        
         # interate through each camera volume and fill with sliced dat vol
         for i in trange(timepoints):
             volume = load_dats_for_vol(dat_loader,
@@ -172,7 +179,14 @@ def main(args):
                 volume-=dark_vol
                 
             z_arr.oindex[i] = volume
+            if mip:
+                down_samp_arr = block_reduce(volume, block_size=(10,3,3), func=np.median)
+                mip_arr.append(np.sum(down_samp_arr, axis=0))
         logging.info("Trial Exported")
+        if mip:
+            mip_arr = np.array(mip_arr, dtype=np.uint16)
+            tifffile.imsave(f"{exp_dir}/mip.tiff", list(mip_arr))
+            
 
 
 if __name__ == "__main__":
@@ -184,8 +198,14 @@ if __name__ == "__main__":
                         default=5, type=int)
     parser.add_argument('-f', '--flyback', help="flyback frames used. Default n = 2.",
                         default=2, type=int)
-    parser.add_argument('-uvP', '--UVPad', help="Extra frames excluded from UV stimulation. Default n = 0.",
-                        default=0, type=int)
+    # parser.add_argument('-uvP', '--UVPad', help="Extra frames excluded from UV stimulation. Default n = 0.",
+    #                     default=0, type=int)
+    parser.add_argument('-uvP', '--UVPad', help="Extra frames excluded from UV stimulation, first arg is pre-frame padding. Default n = [0,1].",
+                        nargs=2, default=[0,1], type=int)
+    parser.add_argument('-pre', '--preStim', help="Seconds acquired before stimulus.",
+                        nargs='+', type=int)
+    parser.add_argument('-m', '--MIP', help="Save a max intensity projection of cleaned volumes. Default n = 1.",
+                        default=1, type=int)
     parser.add_argument('-pre', '--preStim', help="Seconds acquired before stimulus.",
                         nargs='+', type=int)
     parser.add_argument('-pos', '--postStim', help="Seconds acquired after stimulus.",
