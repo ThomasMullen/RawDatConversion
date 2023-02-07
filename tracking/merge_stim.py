@@ -161,7 +161,7 @@ def merge_tracking(tracking_dir, exp_dir, verbose=True):
     ax.set(
         xlim=[40000, 50000]
     )
-    fig.savefig(f"{exfig_dirp_dir}/uv_reference_shortened.png")
+    fig.savefig(f"{fig_dir}/uv_reference_shortened.png")
     
     
     stim_onset = tail_df.loc[merged_onset, ['FrameID','vol_id']]

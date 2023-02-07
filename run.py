@@ -109,8 +109,8 @@ def main(args):
         logging.info(f"pre_v {pre_v}")
         logging.info(f"post_v {post_v}")
     
-        logging.info(f"initial {stim_on.vol_id-pre_v}, {stim_on.vol_id-frame_pad}")
-        logging.info(f"final {stim_off.vol_id+1+frame_pad}, {stim_off.vol_id+post_v}")
+        logging.info(f"\n\ninitial exp-vol: {stim_on.vol_id-pre_v}\t initial stim-vol: {stim_on.vol_id-frame_pad}")
+        logging.info(f"final stim-vol: {stim_off.vol_id+1+frame_pad}\t final exp-vol: {stim_off.vol_id+post_v}\n\n")
         # slice on the period and stimuli activity
         trial_dat_slice_array = list(itertools.chain(*[dat_slice_array[stim_on.vol_id-pre_v:stim_on.vol_id-frame_pad], 
                                                 dat_slice_array[stim_off.vol_id+1+frame_pad:stim_off.vol_id+post_v]]))
