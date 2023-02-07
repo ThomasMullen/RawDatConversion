@@ -135,19 +135,25 @@ def main(args):
                         dtype=np.uint16,)
         
         # add attributes i.e. relative frame ids and vol ids
-        fid_vals = tail_df.loc[tail_df.vol_id == stim_off.vol_id-pre_v, 'FrameID'].values
-        z_arr.attrs['FID_init'] = (fid_vals[0], fid_vals[-1])
-        z_arr.attrs['VID_init'] = stim_on.vol_id - pre_v
+        # start of trial landmarks
+        fid_vals = tail_df.loc[tail_df.vol_id == stim_on.vol_id-pre_v, 'FrameID'].values
+        z_arr.attrs['FID_init'] = (fid_vals[0], fid_vals[-1]) # upper and lower frame id at start of the trial
+        z_arr.attrs['VID_init'] = stim_on.vol_id - pre_v # volume id at start of the trial
         
-        fid_vals = tail_df.loc[tail_df.vol_id == stim_on.vol_id+post_v, 'FrameID'].values
-        z_arr.attrs['FID_fin'] = (fid_vals[0], fid_vals[-1])
-        z_arr.attrs['VID_fin'] = stim_off.vol_id + post_v
+        # end of trial landmarks
+        fid_vals = tail_df.loc[tail_df.vol_id == stim_off.vol_id+post_v, 'FrameID'].values
+        z_arr.attrs['FID_fin'] = (fid_vals[0], fid_vals[-1]) # upper and lower frame id at end of the trial
+        z_arr.attrs['VID_fin'] = stim_off.vol_id + post_v # volume id at end of the trial
         
-        z_arr.attrs['FID_on'] = tail_df.loc[tail_df.vol_id == stim_on.vol_id-pre_frame_pad, 'FrameID'].values[0]
-        z_arr.attrs['VID_on'] = stim_on.vol_id
+        # stimulus onset landmarks - accounts for padding
+        fid_vals = tail_df.loc[tail_df.vol_id == stim_on.vol_id-pre_frame_pad, 'FrameID'].values
+        z_arr.attrs['FID_on'] = (fid_vals[0], fid_vals[-1])
+        z_arr.attrs['VID_on'] = stim_on.vol_id-pre_frame_pad
         
-        z_arr.attrs['FID_off'] = tail_df.loc[tail_df.vol_id == stim_off.vol_id+post_frame_pad, 'FrameID'].values[-1]
-        z_arr.attrs['VID_off'] = stim_off.vol_id
+        # stimulus onset landmarks - accounts for padding
+        fid_vals = tail_df.loc[tail_df.vol_id == stim_off.vol_id+post_frame_pad, 'FrameID'].values
+        z_arr.attrs['FID_off'] = (fid_vals[0], fid_vals[-1])
+        z_arr.attrs['VID_off'] = stim_off.vol_id+post_frame_pad
         
         z_arr.attrs['vol_rate'] = vol_rate
         z_arr.attrs['pre_stim_time'] = t_init
@@ -185,7 +191,7 @@ def main(args):
         logging.info("Trial Exported")
         if mip:
             mip_arr = np.array(mip_arr, dtype=np.uint16)
-            tifffile.imsave(f"{exp_dir}/mip.tiff", list(mip_arr))
+            tifffile.imsave(f"{exp_dir}/mip{trial_ix:02}.tiff", list(mip_arr))
             
 
 
