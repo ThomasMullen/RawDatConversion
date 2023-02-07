@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from tracking.smoothing_functs import one_euro_filter
+from data_conversion.dat_file_functs import create_directory
 
 def add_uv_column(cam_df:pd.DataFrame, stim_df:pd.DataFrame)->pd.DataFrame:
     
@@ -52,6 +53,7 @@ def merge_tracking(tracking_dir, exp_dir, verbose=True):
     
     # make hdf5 file
     store = pd.HDFStore(f'{exp_dir}/store.h5')
+    fig_dir = create_directory(exp_dir, "figs")
     
     stim_df = pd.read_csv(stim_path, delimiter=' ') # catch if broken
     cam_df = pd.read_csv(cam_path, delimiter=' ')
@@ -73,9 +75,9 @@ def merge_tracking(tracking_dir, exp_dir, verbose=True):
         # save tail trace
         fig, ax = plt.subplots()
         df.cum_angle10.plot(ax=ax, title="tail trace")
-        fig.savefig(f"{exp_dir}/tail_trace.png")
+        fig.savefig(f"{fig_dir}/tail_trace.png")
         df.cum_angle10[5000:6000].plot(ax=ax, title="tail trace")
-        fig.savefig(f"{exp_dir}/short_tail_trace.png")
+        fig.savefig(f"{fig_dir}/short_tail_trace.png")
     
     tail_df = pd.concat([tail_df, df], axis=1)
     
@@ -86,10 +88,21 @@ def merge_tracking(tracking_dir, exp_dir, verbose=True):
     # save galvo diff
     if verbose:
         fig, ax = plt.subplots()
-        cam_df.galvo_diff.plot(ax=ax, title="galvo diff")
-        fig.savefig(f"{exp_dir}/galvo_diff.png")
-        cam_df.GalvoValue.plot(ax=ax, title="galvo vals")
-        fig.savefig(f"{exp_dir}/galvo_vals.png")
+        cam_df.galvo_diff.plot(ax=ax, title="galvo diff", label="galvo diff", lw=.1)
+        fig.savefig(f"{fig_dir}/galvo_diff.png")
+        cam_df.GalvoValue.plot(ax=ax, title="galvo vals", label="galvo vals", lw=.1)
+        ax.legend()
+        fig.savefig(f"{fig_dir}/galvo_vals.png")
+        # shortened version
+        fig, ax = plt.subplots()
+        cam_df.galvo_diff.plot(ax=ax, title="galvo diff", label="galvo diff", lw=1)
+        cam_df.GalvoValue.plot(ax=ax, title="galvo vals", label="galvo vals", lw=1)
+        ax.legend()
+        ax.set(
+            xlim=[10000,15000]
+        )
+        fig.savefig(f"{fig_dir}/galvo_vals_shortened.png")
+        
     # returns rows of galvo changes
     df_filtered_galvo = cam_df[cam_df.galvo_diff>.5]
     vol_id = pd.DataFrame(np.arange(df_filtered_galvo.shape[0]+1), 
@@ -99,6 +112,7 @@ def merge_tracking(tracking_dir, exp_dir, verbose=True):
     # merge vol and frame id onto original behaviour tracking df
     tail_df = tail_df.merge(vol_id, how='left', left_on='FrameID', right_on='frame_id').ffill()
     # format vol_id
+    tail_df.dropna(axis=0, inplace=True)
     tail_df[['frame_id', 'vol_id']] = tail_df[['frame_id', 'vol_id']].astype(int)
     
     
@@ -107,6 +121,11 @@ def merge_tracking(tracking_dir, exp_dir, verbose=True):
     # define UV threshold based on mean photodioade value
     uv_thresh = tail_df.PhotodiodeValue.mean() + .05
     tail_df.loc[tail_df.PhotodiodeValue>uv_thresh, 'uv']=1
+    if verbose:
+        fig, ax = plt.subplots()
+        cam_df.PhotodiodeValue.plot(ax=ax, title=f"photo-diode threshold {uv_thresh:.3f}")
+        fig.savefig(f"{fig_dir}/photodiode.png")
+    
     
     # merge pulse cycle stimulus
     onset, offset, duration = find_onset_offset(tail_df.uv)
@@ -120,10 +139,29 @@ def merge_tracking(tracking_dir, exp_dir, verbose=True):
     roffset_ix = np.where(roffset_diff>2000)[0]
     roffset_ix = np.hstack([roffset_ix, roffset_ix[-1]+1])
     merged_offset = roffset[roffset_ix][::-1]
+    
     # assign values
     tail_df['uv_stim']=0
+    # plot behaviour-stim-volumes
+    fig, ax = plt.subplots()
     for on, off in zip(merged_onset, merged_offset):
         tail_df.loc[on:off, 'uv_stim']=1
+        ax.axvline(on,lw=1,c='C1', alpha=.6)
+        ax.axvline(off,lw=1,c='C2', alpha=.6)
+    tail_df.cum_angle10.plot(ax=ax, lw=.5, label='tail')
+    ax.plot([],[],c='C1', label='uv onset')
+    ax.plot([],[],c='C2', label='uv offset')
+    # plot volume timepoints
+    vol_ix = tail_df.drop_duplicates(subset='vol_id', keep='first').frame_id.values
+    vol_ix -=vol_ix[0]
+    ax.scatter(vol_ix, np.ones_like(vol_ix), label='vol ix', s=.1, c='k')
+    ax.legend()
+    fig.savefig(f"{fig_dir}/uv_reference.png")
+    # plot shortened version
+    ax.set(
+        xlim=[40000, 50000]
+    )
+    fig.savefig(f"{exfig_dirp_dir}/uv_reference_shortened.png")
     
     
     stim_onset = tail_df.loc[merged_onset, ['FrameID','vol_id']]
