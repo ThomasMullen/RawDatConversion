@@ -78,6 +78,7 @@ def merge_tracking(tracking_dir, exp_dir, verbose=True):
         fig.savefig(f"{fig_dir}/tail_trace.png")
         df.cum_angle10[5000:6000].plot(ax=ax, title="tail trace")
         fig.savefig(f"{fig_dir}/short_tail_trace.png")
+        plt.close()
     
     tail_df = pd.concat([tail_df, df], axis=1)
     
@@ -93,6 +94,7 @@ def merge_tracking(tracking_dir, exp_dir, verbose=True):
         cam_df.GalvoValue.plot(ax=ax, title="galvo vals", label="galvo vals", lw=.1)
         ax.legend()
         fig.savefig(f"{fig_dir}/galvo_vals.png")
+        plt.close()
         # shortened version
         fig, ax = plt.subplots()
         cam_df.galvo_diff.plot(ax=ax, title="galvo diff", label="galvo diff", lw=1)
@@ -102,6 +104,7 @@ def merge_tracking(tracking_dir, exp_dir, verbose=True):
             xlim=[10000,15000]
         )
         fig.savefig(f"{fig_dir}/galvo_vals_shortened.png")
+        plt.close()
         
     # returns rows of galvo changes
     df_filtered_galvo = cam_df[cam_df.galvo_diff>.5]
@@ -125,7 +128,7 @@ def merge_tracking(tracking_dir, exp_dir, verbose=True):
         fig, ax = plt.subplots()
         cam_df.PhotodiodeValue.plot(ax=ax, title=f"photo-diode threshold {uv_thresh:.3f}")
         fig.savefig(f"{fig_dir}/photodiode.png")
-    
+        plt.close()    
     
     # merge pulse cycle stimulus
     onset, offset, duration = find_onset_offset(tail_df.uv)
@@ -162,7 +165,7 @@ def merge_tracking(tracking_dir, exp_dir, verbose=True):
         xlim=[40000, 50000]
     )
     fig.savefig(f"{fig_dir}/uv_reference_shortened.png")
-    
+    plt.close()
     
     stim_onset = tail_df.loc[merged_onset, ['FrameID','vol_id']]
     stim_offset = tail_df.loc[merged_offset, ['FrameID','vol_id']]
