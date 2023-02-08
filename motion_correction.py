@@ -75,7 +75,7 @@ def downsample_hr_vol(hr_info_path:str, lr_info_path:str, lr_shape:tuple, hr_vol
     hr_converter = get_pixel_space_calibration(hr_info_path)
     lr_converter = get_pixel_space_calibration(lr_info_path)
     hr_space = AnatomicalSpace("pli", resolution=(hr_converter.x_per_pix, hr_converter.y_per_pix, hr_converter.z_per_pix))
-    lr_space = AnatomicalSpace("pli", resolution=(hr_vol.shape[0]/lr_shape[0], lr_converter.y_per_pix, lr_converter.z_per_pix))
+    lr_space = AnatomicalSpace("pli", resolution=(hr_vol.shape[0]/(2*lr_shape[0]), lr_converter.y_per_pix, lr_converter.z_per_pix))
     downsampled_vol = hr_space.map_stack_to(lr_space, hr_vol)
     print(lr_shape, downsampled_vol.shape)
     return downsampled_vol
@@ -142,7 +142,7 @@ def main(args):
     # generate dat file loader
     dat_loader = config.get_dat_dimensions()
     # low res volume shame
-    lr_shape = (daq.pixelPerLine - flyback, dat_loader.x_crop, dat_loader.y_crop)
+    lr_shape = (int(daq.pixelsPerLine) - flyback, dat_loader.x_crop, dat_loader.y_crop)
     # load and sort dat spools files
     total_planes = calc_total_planes(daq)
     file_names = dat_loader.sort_spool_filenames(total_planes)
@@ -264,7 +264,7 @@ def main(args):
         
         # create a dark vol is background subtraction applied
         dark_vol = np.tile(dark_plane, (int(daq.pixelsPerLine-flyback),1,1)).astype(z_arr.dtype)
-        
+
         # Max intensiry projection
         if mip:
             mip_arr = []
