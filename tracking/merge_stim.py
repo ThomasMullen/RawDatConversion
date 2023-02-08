@@ -76,6 +76,7 @@ def merge_tracking(tracking_dir, exp_dir, verbose=True):
         fig, ax = plt.subplots()
         df.cum_angle10.plot(ax=ax, title="tail trace")
         fig.savefig(f"{fig_dir}/tail_trace.png")
+        fig, ax = plt.subplots()
         df.cum_angle10[5000:6000].plot(ax=ax, title="tail trace")
         fig.savefig(f"{fig_dir}/short_tail_trace.png")
         plt.close()
@@ -162,7 +163,7 @@ def merge_tracking(tracking_dir, exp_dir, verbose=True):
     fig.savefig(f"{fig_dir}/uv_reference.png")
     # plot shortened version
     ax.set(
-        xlim=[40000, 50000]
+        xlim=[on-5000, off+5000]
     )
     fig.savefig(f"{fig_dir}/uv_reference_shortened.png")
     plt.close()
