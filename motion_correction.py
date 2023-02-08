@@ -300,9 +300,9 @@ def main(args):
         logging.info("Trial Exported")
         if mip:
             mip_arr = np.array(mip_arr, dtype=np.uint16)
-            tifffile.imsave(f"{exp_dir}/mip{trial_ix:02}.tiff", list(mip_arr))
+            tifffile.imsave(f"{exp_dir}/raw_mip{trial_ix:02}.tiff", list(mip_arr))
             aligned_mip_arr = np.array(aligned_mip_arr, dtype=np.uint16)
-            tifffile.imsave(f"{exp_dir}/mip{trial_ix:02}.tiff", list(aligned_mip_arr))
+            tifffile.imsave(f"{exp_dir}/mc_mip{trial_ix:02}.tiff", list(aligned_mip_arr))
             
     # 7: Form binary mask & downsample voxels
     # ---------------------------------
