@@ -11,6 +11,7 @@ import cProfile, pstats
 import io
 import itertools
 from skimage.measure import block_reduce
+from skimage import io as skio
 import tifffile
 
 from data_conversion.dat_conversion import make_dark_plane, convert_dat_to_arr
@@ -192,7 +193,43 @@ def main(args):
         if mip:
             mip_arr = np.array(mip_arr, dtype=np.uint16)
             tifffile.imsave(f"{exp_dir}/mip{trial_ix:02}.tiff", list(mip_arr))
-            
+    
+    # 5 Convert HR stack
+    # ---------------------------------
+    # HR dir path
+    hr_dat_dir = list(sorted((name for name in root_dir.glob("**/") if 
+                 "HR" in str(name) and 
+                 "dark" not in str(name)), 
+                reverse=True))[-1]
+    hr_info_path = Path(f"{hr_dat_dir}_info.mat")
+    hr_config_path = Path(f"{hr_dat_dir}",f"acquisitionmetadata.ini")
+    # load high res stack
+    # load daq info
+    hr_daq = Struct(mat73.loadmat(hr_info_path)).info.daq
+    # load config file
+    hr_config=LoadConfig(hr_config_path)
+    # generate dat file loader
+    hr_dat_loader = hr_config.get_dat_dimensions()
+    # load and sort dat spools files
+    total_hr_planes = calc_total_planes(hr_daq)
+    hr_file_names = hr_dat_loader.sort_spool_filenames(total_hr_planes)
+    # prepare slices and dat vols for each camera vol
+    hr_dat_vol_arrays, hr_dat_slice_array = map_dats_to_volume(hr_daq, hr_dat_loader.n_planes)
+    # load high resolution volume
+    hr_volume = load_dats_for_vol(hr_dat_loader,
+                                    hr_dat_dir, 
+                                    hr_file_names, 
+                                    hr_dat_vol_arrays[0], 
+                                    hr_dat_slice_array[0])[...,:-flyback]
+    hr_volume = volume.transpose(2,0,1)
+    
+    # subtract dark vol
+    hr_volume = np.tile(dark_plane, (int(hr_daq.pixelsPerLine-flyback),1,1)).astype(volume.dtype)
+    hr_volume+=110
+    hr_volume-=dark_vol
+    
+    # save the high resolution volume as a tiff
+    skio.imsave(Path(f"{exp_dir}","high_resolution.tif"), hr_volume.astype(np.uint16))
 
 
 if __name__ == "__main__":
