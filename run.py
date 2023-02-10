@@ -237,39 +237,39 @@ def main(args):
 
 
 if __name__ == "__main__":
-    # parser = argparse.ArgumentParser(description='Define the parameters used for converting dat files')
-    # parser.add_argument('-pD', '--PathData', help="path to imaging directories data", default='.', type=str)
-    # parser.add_argument('-pT', '--PathTracking', help="path to tracking directories data", default='.', type=str)
-    # parser.add_argument('-pE', '--PathExport', help="path to export aggregated data", default='.', type=str)
-    # parser.add_argument('-c', '--cLevel', help="Level of compression of zarr file. Uses zstd Blosc.BITSHUFFLE compression. Default n = 5.",
-    #                     default=5, type=int)
-    # parser.add_argument('-f', '--flyback', help="flyback frames used. Default n = 2.",
-    #                     default=2, type=int)
-    # # parser.add_argument('-uvP', '--UVPad', help="Extra frames excluded from UV stimulation. Default n = 0.",
-    # #                     default=0, type=int)
-    # parser.add_argument('-uvP', '--UVPad', help="Extra frames excluded from UV stimulation, first arg is pre-frame padding. Default n = [0,1].",
-    #                     nargs=2, default=[0,1], type=int)
-    # parser.add_argument('-pre', '--preStim', help="Seconds acquired before stimulus.",
-    #                     nargs='+', type=int)
-    # parser.add_argument('-pos', '--postStim', help="Seconds acquired after stimulus.",
-    #                     nargs='+', type=int)
-    # parser.add_argument('-m', '--MIP', help="Save a max intensity projection of cleaned volumes. Default n = 1.",
-    #                     default=1, type=int)
-    # parser.add_argument('-dV', '--SubtractDarkVol', help="bool subtract darkvolume from volumes. Default true", default='1', type=int)
-    # args = parser.parse_args()
+    parser = argparse.ArgumentParser(description='Define the parameters used for converting dat files')
+    parser.add_argument('-pD', '--PathData', help="path to imaging directories data", default='.', type=str)
+    parser.add_argument('-pT', '--PathTracking', help="path to tracking directories data", default='.', type=str)
+    parser.add_argument('-pE', '--PathExport', help="path to export aggregated data", default='.', type=str)
+    parser.add_argument('-c', '--cLevel', help="Level of compression of zarr file. Uses zstd Blosc.BITSHUFFLE compression. Default n = 5.",
+                        default=5, type=int)
+    parser.add_argument('-f', '--flyback', help="flyback frames used. Default n = 2.",
+                        default=2, type=int)
+    # parser.add_argument('-uvP', '--UVPad', help="Extra frames excluded from UV stimulation. Default n = 0.",
+    #                     default=0, type=int)
+    parser.add_argument('-uvP', '--UVPad', help="Extra frames excluded from UV stimulation, first arg is pre-frame padding. Default n = [0,1].",
+                        nargs=2, default=[0,1], type=int)
+    parser.add_argument('-pre', '--preStim', help="Seconds acquired before stimulus.",
+                        nargs='+', type=int)
+    parser.add_argument('-pos', '--postStim', help="Seconds acquired after stimulus.",
+                        nargs='+', type=int)
+    parser.add_argument('-m', '--MIP', help="Save a max intensity projection of cleaned volumes. Default n = 1.",
+                        default=1, type=int)
+    parser.add_argument('-dV', '--SubtractDarkVol', help="bool subtract darkvolume from volumes. Default true", default='1', type=int)
+    args = parser.parse_args()
     
     # debug
     # ---
-    args=argparse.Namespace(PathData="/Volumes/SCAPE 1/Tom/20230203/20230203_huc_h2b_gcamp6f_7dpf_f02troubleshoot",
-                            PathTracking="/Volumes/SCAPE 1/Tom/20230203/20230203_huc_h2b_gcamp6f_7dpf_f02troubleshoot/tracking/20230203_huc_h2b_gcamp6f_7dpf_f02troubleshoot",
-                            PathExport="/Users/thomasmullen/Desktop/dump/RawDatConversionTest",
-                            cLevel=5,
-                            flyback=2,
-                            UVPad=[0,1],
-                            preStim=[1, 1, 1, 1],
-                            postStim=[1, 1, 1, 1],
-                            MIP=1,
-                            SubtractDarkVol=1
-                            )
+    # args=argparse.Namespace(PathData="/Volumes/SCAPE 1/Tom/20230203/20230203_huc_h2b_gcamp6f_7dpf_f02troubleshoot",
+    #                         PathTracking="/Volumes/SCAPE 1/Tom/20230203/20230203_huc_h2b_gcamp6f_7dpf_f02troubleshoot/tracking/20230203_huc_h2b_gcamp6f_7dpf_f02troubleshoot",
+    #                         PathExport="/Users/thomasmullen/Desktop/dump/RawDatConversionTest",
+    #                         cLevel=5,
+    #                         flyback=2,
+    #                         UVPad=[0,1],
+    #                         preStim=[1, 1, 1, 1],
+    #                         postStim=[1, 1, 1, 1],
+    #                         MIP=1,
+    #                         SubtractDarkVol=1
+    #                         )
     
     main(args)
