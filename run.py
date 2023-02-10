@@ -3,7 +3,7 @@ import logging
 import argparse
 from pathlib import Path
 import numpy as np
-import zarr
+import h5py
 from numcodecs import Blosc
 import mat73
 from tqdm import trange
@@ -124,48 +124,56 @@ def main(args):
             
         # instantiate experiment array
         compressor = Blosc(cname='zstd', clevel=args.cLevel, shuffle=Blosc.BITSHUFFLE)
-        zarr_filepath = Path(f"{exp_dir}",f"{root_dir.stem}_{trial_ix:02}.zarr")
-        z_arr = zarr.open(f'{zarr_filepath}', 
-                        mode='w', 
-                        shape=(timepoints,
-                                int(daq.pixelsPerLine-flyback),
-                                dat_loader.x_crop,
-                                dat_loader.y_crop),
-                        chunks=(1, None),
-                        compressor=compressor,
-                        dtype=np.uint16,)
+        hdf5_filepath = Path(f"{exp_dir}",f"{root_dir.stem}_{trial_ix:02}.h5")
+        # Create file
+        compressed_file = h5py.File(f"{hdf5_filepath}",'w')
+        compressed_data_5d = compressed_file.create_dataset(name='/imagedata', 
+                                                            shape=(timepoints, 
+                                                                   1,
+                                                                   int(daq.pixelsPerLine-flyback), 
+                                                                   dat_loader.x_crop, 
+                                                                   dat_loader.y_crop),
+                                                            dtype='uint16', 
+                                                            maxshape=(timepoints, 
+                                                                   1,
+                                                                   int(daq.pixelsPerLine-flyback), 
+                                                                   dat_loader.x_crop, 
+                                                                   dat_loader.y_crop),
+                                                            chunks=(1, None), 
+                                                            compression='gzip',
+                                                            compression_opts=7)
         
         # add attributes i.e. relative frame ids and vol ids
         # start of trial landmarks
         fid_vals = tail_df.loc[tail_df.vol_id == stim_on.vol_id-pre_v, 'FrameID'].values
-        z_arr.attrs['FID_init'] = (fid_vals[0], fid_vals[-1]) # upper and lower frame id at start of the trial
-        z_arr.attrs['VID_init'] = stim_on.vol_id - pre_v # volume id at start of the trial
+        compressed_data_5d.attrs['FID_init'] = (fid_vals[0], fid_vals[-1]) # upper and lower frame id at start of the trial
+        compressed_data_5d.attrs['VID_init'] = stim_on.vol_id - pre_v # volume id at start of the trial
         
         # end of trial landmarks
         fid_vals = tail_df.loc[tail_df.vol_id == stim_off.vol_id+post_v, 'FrameID'].values
-        z_arr.attrs['FID_fin'] = (fid_vals[0], fid_vals[-1]) # upper and lower frame id at end of the trial
-        z_arr.attrs['VID_fin'] = stim_off.vol_id + post_v # volume id at end of the trial
+        compressed_data_5d.attrs['FID_fin'] = (fid_vals[0], fid_vals[-1]) # upper and lower frame id at end of the trial
+        compressed_data_5d.attrs['VID_fin'] = stim_off.vol_id + post_v # volume id at end of the trial
         
         # stimulus onset landmarks - accounts for padding
         fid_vals = tail_df.loc[tail_df.vol_id == stim_on.vol_id-pre_frame_pad, 'FrameID'].values
-        z_arr.attrs['FID_on'] = (fid_vals[0], fid_vals[-1])
-        z_arr.attrs['VID_on'] = stim_on.vol_id-pre_frame_pad
+        compressed_data_5d.attrs['FID_on'] = (fid_vals[0], fid_vals[-1])
+        compressed_data_5d.attrs['VID_on'] = stim_on.vol_id-pre_frame_pad
         
         # stimulus onset landmarks - accounts for padding
         fid_vals = tail_df.loc[tail_df.vol_id == stim_off.vol_id+post_frame_pad, 'FrameID'].values
-        z_arr.attrs['FID_off'] = (fid_vals[0], fid_vals[-1])
-        z_arr.attrs['VID_off'] = stim_off.vol_id+post_frame_pad
+        compressed_data_5d.attrs['FID_off'] = (fid_vals[0], fid_vals[-1])
+        compressed_data_5d.attrs['VID_off'] = stim_off.vol_id+post_frame_pad
         
-        z_arr.attrs['vol_rate'] = vol_rate
-        z_arr.attrs['pre_stim_time'] = t_init
-        z_arr.attrs['post_stim_time'] = t_fin
-        z_arr.attrs['VID_stim_ix'] = (stim_on.vol_id-pre_frame_pad) - (stim_on.vol_id-pre_v)
-        z_arr.attrs['VID_stim_ix'] = pre_v-pre_frame_pad
-        z_arr.attrs['FID_stim_ix'] = tail_df.loc[tail_df.vol_id == pre_v-pre_frame_pad, 'FrameID'].values[0]
-        z_arr.attrs['exp_name'] = Struct(mat73.loadmat(info_path)).info.scanName
+        compressed_data_5d.attrs['vol_rate'] = vol_rate
+        compressed_data_5d.attrs['pre_stim_time'] = t_init
+        compressed_data_5d.attrs['post_stim_time'] = t_fin
+        compressed_data_5d.attrs['VID_stim_ix'] = (stim_on.vol_id-pre_frame_pad) - (stim_on.vol_id-pre_v)
+        compressed_data_5d.attrs['VID_stim_ix'] = pre_v-pre_frame_pad
+        compressed_data_5d.attrs['FID_stim_ix'] = tail_df.loc[tail_df.vol_id == pre_v-pre_frame_pad, 'FrameID'].values[0]
+        compressed_data_5d.attrs['exp_name'] = Struct(mat73.loadmat(info_path)).info.scanName
         
         # create a dark vol is background subtraction applied
-        dark_vol = np.tile(dark_plane, (int(daq.pixelsPerLine-flyback),1,1)).astype(z_arr.dtype)
+        dark_vol = np.tile(dark_plane, (int(daq.pixelsPerLine-flyback),1,1)).astype('uint16')
         
         # Max intensiry projection
         if mip:
@@ -185,11 +193,15 @@ def main(args):
                 volume+=110
                 volume-=dark_vol
                 
-            z_arr.oindex[i] = volume
+            compressed_data_5d[i,0,:,:,:] = volume.astype('uint16')
             if mip:
                 down_samp_arr = block_reduce(volume, block_size=(10,3,3), func=np.median)
                 mip_arr.append(np.sum(down_samp_arr, axis=0))
         logging.info("Trial Exported")
+        # close dataset
+        compressed_data_5d.close()
+        # close file
+        compressed_file.close()
         if mip:
             mip_arr = np.array(mip_arr, dtype=np.uint16)
             tifffile.imsave(f"{exp_dir}/mip{trial_ix:02}.tiff", list(mip_arr))
