@@ -224,7 +224,7 @@ def main(args):
     hr_volume = volume.transpose(2,0,1)
     
     # subtract dark vol
-    hr_volume = np.tile(dark_plane, (int(hr_daq.pixelsPerLine-flyback),1,1)).astype(volume.dtype)
+    dark_vol = np.tile(dark_plane, (int(hr_daq.pixelsPerLine-flyback),1,1)).astype(volume.dtype)
     hr_volume+=110
     hr_volume-=dark_vol
     
