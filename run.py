@@ -121,25 +121,19 @@ def main(args):
                                                 dat_vol_arrays[stim_off.vol_id+1+post_frame_pad:stim_off.vol_id+post_v]]))
         
         timepoints = len(trial_dat_slice_array)
-            
+        
+        vol_shape = (int(daq.pixelsPerLine-flyback), dat_loader.x_crop, dat_loader.y_crop)
+        
         # instantiate experiment array
         compressor = Blosc(cname='zstd', clevel=args.cLevel, shuffle=Blosc.BITSHUFFLE)
         hdf5_filepath = Path(f"{exp_dir}",f"{root_dir.stem}_{trial_ix:02}.h5")
         # Create file
         compressed_file = h5py.File(f"{hdf5_filepath}",'w')
         compressed_data_5d = compressed_file.create_dataset(name='/imagedata', 
-                                                            shape=(timepoints, 
-                                                                   1,
-                                                                   int(daq.pixelsPerLine-flyback), 
-                                                                   dat_loader.x_crop, 
-                                                                   dat_loader.y_crop),
+                                                            shape=(timepoints,1,)+vol_shape,
                                                             dtype='uint16', 
-                                                            maxshape=(timepoints, 
-                                                                   1,
-                                                                   int(daq.pixelsPerLine-flyback), 
-                                                                   dat_loader.x_crop, 
-                                                                   dat_loader.y_crop),
-                                                            chunks=(1, None), 
+                                                            maxshape=(timepoints,1,)+vol_shape,
+                                                            chunks=(1, 1)+vol_shape, 
                                                             compression='gzip',
                                                             compression_opts=7)
         
