@@ -192,8 +192,6 @@ def main(args):
                 down_samp_arr = block_reduce(volume, block_size=(10,3,3), func=np.median)
                 mip_arr.append(np.sum(down_samp_arr, axis=0))
         logging.info("Trial Exported")
-        # close dataset
-        compressed_data_5d.close()
         # close file
         compressed_file.close()
         if mip:
