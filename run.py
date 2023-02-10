@@ -221,7 +221,7 @@ def main(args):
                                     hr_file_names, 
                                     hr_dat_vol_arrays[0], 
                                     hr_dat_slice_array[0])[...,:-flyback]
-    hr_volume = volume.transpose(2,0,1)
+    hr_volume = hr_volume.transpose(2,0,1)
     
     # subtract dark vol
     dark_vol = np.tile(dark_plane, (int(hr_daq.pixelsPerLine-flyback),1,1)).astype(volume.dtype)
