@@ -125,7 +125,6 @@ def main(args):
         vol_shape = (int(daq.pixelsPerLine-flyback), dat_loader.x_crop, dat_loader.y_crop)
         
         # instantiate experiment array
-        compressor = Blosc(cname='zstd', clevel=args.cLevel, shuffle=Blosc.BITSHUFFLE)
         hdf5_filepath = Path(f"{exp_dir}",f"{root_dir.stem}_{trial_ix:02}.h5")
         # Create file
         compressed_file = h5py.File(f"{hdf5_filepath}",'w')
@@ -135,7 +134,7 @@ def main(args):
                                                             maxshape=(timepoints,1,)+vol_shape,
                                                             chunks=(1, 1)+vol_shape, 
                                                             compression='gzip',
-                                                            compression_opts=7)
+                                                            compression_opts=args.cLevel)
         
         # add attributes i.e. relative frame ids and vol ids
         # start of trial landmarks
@@ -241,8 +240,8 @@ if __name__ == "__main__":
     parser.add_argument('-pD', '--PathData', help="path to imaging directories data", default='.', type=str)
     parser.add_argument('-pT', '--PathTracking', help="path to tracking directories data", default='.', type=str)
     parser.add_argument('-pE', '--PathExport', help="path to export aggregated data", default='.', type=str)
-    parser.add_argument('-c', '--cLevel', help="Level of compression of zarr file. Uses zstd Blosc.BITSHUFFLE compression. Default n = 5.",
-                        default=5, type=int)
+    parser.add_argument('-c', '--cLevel', help="Level of compression of hdf5 file. Uses gzip compression. Default n = 5.",
+                        default=4, type=int)
     parser.add_argument('-f', '--flyback', help="flyback frames used. Default n = 2.",
                         default=2, type=int)
     # parser.add_argument('-uvP', '--UVPad', help="Extra frames excluded from UV stimulation. Default n = 0.",
