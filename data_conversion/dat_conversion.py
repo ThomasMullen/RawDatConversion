@@ -31,12 +31,12 @@ def make_dark_plane(dat_dir:str, export_path:str=None)->np.ndarray:
     return dark_plane
 
 # function build stack
-def convert_dat_to_arr(dat_dir:str, zarr_filepath:str, flyback:int=2, dark_plane_path:str=None, compressor=None)->np.ndarray:
+def convert_dat_to_arr(dat_dir:str, zarr_filepath:str, flyback:int=2, 
+                       dark_plane_path:str=None, compressor=None)->np.ndarray:
     # parse filepaths
     dat_dir=Path(dat_dir)
     info_path = Path(f"{dat_dir.parent}",f"{dat_dir.stem}_info.mat")
     config_path = Path(f"{dat_dir}",f"acquisitionmetadata.ini")
-    
     # check if dark plane can be loaded
     if dark_plane_path is not None:
         dark_plane_path = Path(dark_plane_path)
@@ -46,7 +46,6 @@ def convert_dat_to_arr(dat_dir:str, zarr_filepath:str, flyback:int=2, dark_plane
     else:
         dark_plane=np.load(dark_plane_path)
         logging.info("Loaded dark plane loaded")
-    
     # load daq info
     daq = Struct(mat73.loadmat(info_path)).info.daq
     # load config file
@@ -84,11 +83,8 @@ def convert_dat_to_arr(dat_dir:str, zarr_filepath:str, flyback:int=2, dark_plane
         if dark_plane is not None:
             volume+=110
             volume-=dark_vol
-            
         z_arr.oindex[i] = volume
-
     return z_arr
-    
 
 def main():
     # dark volume to subtract
@@ -96,20 +92,15 @@ def main():
     export_path=Path(r"/Volumes/TomMullen/10dpf20221119Fish01/test3/dark_offset_run1_HR_dark_plane")
     # make_dark_plane(dat_dir=dark_dat_dir, 
     #                 export_path=export_path)
-    
     dat_dir=Path(r"/Volumes/TomMullen/10dpf20221119Fish01/test3/10dpf20221119Fish01/test3/fullrun_run1")
     compressor = Blosc(cname='zstd', clevel=7, shuffle=Blosc.BITSHUFFLE)
     output_z_arr = convert_dat_to_arr(dat_dir=f"{dat_dir}",
                                       flyback=2, 
                                       dark_plane_path=Path(f"{export_path}.npy"), 
-                                      zarr_filepath=r"/Volumes/TomMullen/10dpf20221119Fish01/test3/fullrun.zarr", 
+                                      zarr_filepath=r"/Volumes/TomMullen/10dpf20221119Fish01run.zarr", 
                                       compressor=compressor)
 
-
-
 if __name__ == '__main__':
-    
-
     import cProfile, pstats
     profiler = cProfile.Profile()
     profiler.enable()
