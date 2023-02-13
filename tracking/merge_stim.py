@@ -52,7 +52,7 @@ def merge_tracking(tracking_dir, exp_dir, verbose=True):
     stim_path = Path(f"{tracking_dir}",f"{tracking_dir.stem}stim control.txt")
     
     # make hdf5 file
-    store = pd.HDFStore(f'{exp_dir}/tracking.h5')
+    store = pd.HDFStore(f'{exp_dir}/{tracking_dir.stem}_tracking.h5')
     fig_dir = create_directory(exp_dir, "figs")
     
     stim_df = pd.read_csv(stim_path, delimiter=' ') # catch if broken
